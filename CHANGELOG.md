@@ -1,4 +1,69 @@
-# Changelog — dsh-ide-git
+# Changelog — dsh-git-panel
+
+## v0.1.3 — 2026-10-14
+
+**类型**：ui / chore（插件列表身份与设置卡重设计）
+
+- **插件列表身份去上游化**：`locale/zh.json` + `en.json` 的 `meta.title/description` 仍是上游 dsh-ide-git 的「Git 工具窗口 / IDE 风格的……」——插件列表里 fork 与上游两行完全同名同描述无法区分。现改为本项目身份「Git 面板 / Git Panel」，描述改为本项目特性概述并保留 dsh-ide-git 二开署名；设置卡标题 ×21 词典同步改为「Git 面板设置」系。
+- **设置卡重设计**（参照 dsh-web-search-free 的卡片语言，全部走 `--dsw-alias-*` token）：布尔开关的 checkbox 以 `appearance:none` 画成 36×20 胶囊开关（`corner-shape:round` 配对 999px 圆角，键盘 focus 环与禁用态保留）——**仍是真实 `<input type=checkbox>`**，探针、乐观写入与无障碍语义不变；placement/list 开关行升级为独立卡片（标题行 + **状态反映副行**：新键 `settings.state.on/off` ×21，如「已开启：进面板立即显示上次保存的仓库列表状态」）；select/text 行同卡片化；动作条 16 开关从带边框滚动列表改为**响应式两列网格**（宽页两列、窄面板单列）；分区折叠改为无框分组（消除框中框）。
+- 验证：`npm test` **123/123**（新增断言：state 键 ×21 词典、状态前缀拼接、胶囊开关 CSS、卡片字段、网格布局、locale meta 身份 + 署名保留）；途中两次被仓库既有的设计 token 纪律测试拦下（半径必须 `--dsw-radius-*` token、999px 必须配 `corner-shape:round`）——均已按规范修正，这正是这些测试存在的意义。
+- 验证（实机）：设置卡探针重跑见下轮记录；v0.1.3 安装后需重启宿主加载。
+
+## v0.1.2 — 2026-10-14
+
+**类型**：feat（仓库状态自动更新策略，可配置）
+
+- 仓库状态自动更新策略，三层触发、两处节流：①轮询——列表行摘要与工作台摘要按 `autoRefreshMs` 计时（0=关闭；缺省字段=历史 12s），in-flight 扫描跳过本 tick（沿用既有闸门），文档隐藏（最小化/切走）时跳过，最小化窗口零消耗；②唤醒——窗口重新可见或聚焦（`refreshOnFocus`，默认开）时立即刷一轮便宜状态（行摘要 + 工作台 summary，1 秒节流防 focus/visibility 双事件双扫；不重扫仓库列表、不重载历史，避免列表跳变，刷新按钮仍是全量重证入口）；③既有触发（挂载、seat 可见、会话/仓库切换、写操作后刷新）保持不变。
+- **范围限定（用户确认）**：自动更新只作用于状态。仓库列表（存在哪些 checkout）变更少且是最慢的扫描（目录遍历 + 逐仓库 git），因此只在**打开时扫描一次**（discovery effect，keyed `[cwd, sessionId, tick]`）与**手动刷新按钮**（唯一 bump `tick` 的地方）执行；轮询与唤醒从不触碰。审计确认 `request('repos'` 全客户端恰一处，冒烟测试钉死该计数与 deps。
+- 配置走 row Config（缺失即默认，老 profile 与无 schemastery 宿主行为不变）：`autoRefreshMs`（number，默认 12000，客户端钳制 0–600000）、`refreshOnFocus`（boolean，默认开）。设置卡「列表与缓存」节新增两行：刷新档位下拉（关/每 5 秒/每 12 秒/每 30 秒/每 60 秒，档外手写值以 kept 选项如实显示）与唤醒开关（乐观写入契约同 placement 行）；轮询经 `subscribeRailConfig` 实时重读，改档即生效不重载。新增 6 键 × 21 词典并更新卡片描述。
+- 移除写死的 `AUTO_REFRESH_MS` 常量：每个计时器都从配置读取（行轮询经 props 传入，工作台直读；SSR 与无配置宿主走缺省 12s）。
+- 验证：`npm test` **123/123**（新增策略测试：host schema 默认值、钳制边界、隐藏文档跳过、唤醒经既有 refreshTick、订阅实时生效、无裸常量、discovery 唯一调用点 + deps 钉死；6 键 × 21 词典键集）；host/client 语法通过；SSR 4/4（项目隔离 profile）；隔离 Chrome 仓库探针 `--full` 通过（含 1440/360/320/1100 四档截图）；**设置卡探针首次对真实宿主全绿**——12 项断言含 18 开关 55ms burst 写入与重载存活、80ms 双击归零、零页面错误，并验证探针自身升级（playwright 走 `.local/browser-fixture` 兜底、复选框按完整 id 寻址三个前缀分区、跑完恢复全部开关初值、openCard 适配 v0.1.0+ 默认仓库视图：先经行内 workbench 动作进工作台再开设置）。
+- 边界：真实 GUI 数据态验证仍受独立浏览器登录会话限制。v0.1.2 已打包并安装到 desktop profile（依赖 `file:D:/workspace/github/dsh-git-panel/.local/install/dsh-git-panel-0.1.2.tgz`），宿主重启后加载；web profile 亦装同版本（含 dsh-better-sidebar@0.25.0）用于设置卡探针的临时实例验证。
+
+## v0.1.1 — 2026-10-14
+
+**类型**：perf / feat（仓库列表并行定标与行状态本地缓存）
+
+- 仓库列表逐行摘要新增持久本地缓存（`dsh-git-panel.rows.v1`，localStorage，LRU 16、无 TTL）：进面板立即显示上次的分支、变更数与展开的变更列表，挂载刷新随后静默纠偏——与工作台 paint 缓存「无过期、后台重证」同一取舍，种子只填冷态（初始 useState），畸形载荷退化为无种子、从不报错。刷新成功即写缓存（与行存活无关：摘要描述仓库而非行）。此前每次冷启动每行都要等扫描返回，用户报告「刚进去都是空白」。
+- 仓库列表扫描并发槽位实测定标：`scripts/performance-probe.mjs` 新增第 5 参数 `listSlots`（1–16，默认 4），在 8 个真实仓库各测 3 轮 warm：2 槽 1419 ms、4 槽 940 ms、6 槽 1077 ms、8 槽 1080 ms——4 即拐点（每个摘要 3 个 git 进程，墙钟时间在进程争用处饱和，更高并发只拖慢单个摘要）。默认维持 4，不再是无依据常数。
+- 两项行为成为默认值并可在插件设置修改（row Config 字段，缺失即默认，老 profile 与无 schemastery 宿主行为不变）：`rowPaintCache`（记住仓库列表状态，默认开）、`listScanSlots`（仓库扫描并发数，默认 4；设置卡为 1/2/4/6/8/12/16 固定档位，客户端读取时钳制 1–16，扫描池每次出队实时读取）。设置卡新增第四节「列表与缓存」（开关 + 档位下拉，乐观写入契约与 placement 行一致），卡片描述同步列出第四节；新增 6 键 × 21 词典，键集测试强制。
+- 修复行缓存首版回归：缓存未命中返回 `undefined` 而组件契约是 `null`，渲染即 `reading 'changes' of undefined` 崩溃、列表 15 秒无行（repositories-probe 的 pageerror 捕获，现额外记录堆栈）。未命中转换 `null`，形状校验加强为四分组数组齐全（展开体直接迭代并 concat 这些数组）。
+- 验证：`npm test` **122/122**（新增行缓存块直驱：读写回环、畸形/部分载荷拒绝、LRU 淘汰、冷态种子与开关门控、池宽读取断言；host schema 两字段默认值断言）；host/client 语法通过；SSR 4/4（项目隔离 profile，`DSH_HOME=.local/ssr`）；隔离 Chrome 的仓库探针 `--full` 通过（真实客户端 + 模拟宿主，含 1440/360/320/1100 四档无横向溢出截图）。
+- 边界：`scripts/settings-card-probe.mjs` 需要带 token 的运行实例 URL，本轮未跑——设置卡第四节由冒烟源码断言与 21 词典键集测试覆盖，实机交互待授权后验证。真实 GUI 数据态验证仍受独立浏览器登录会话限制。v0.1.1 尚未打包安装，运行中的 GUI 仍是 v0.1.0。
+
+## v0.1.0 — 2026-10-14
+
+**类型**：perf / fix（状态与历史加载）
+
+- 仓库发现跳过没有 `.gitmodules` 的 checkout 的 `git submodule status --recursive`，保留真实递归子模块与嵌套仓库发现。
+- 摘要使用 `status --porcelain=v2 --branch -z`，一次读取文件、分支、上游与 ahead/behind，去掉原先 3 个串行 Git 进程；保持 unborn、detached、重命名、混合暂存/工作区状态、合并冲突与 worktree 元数据。分支列表并发读取独立元数据，用 `for-each-ref` 的 `upstream:track` 批量取得分歧数。
+- 工作台首次取得远程分支不再触发第二轮完整刷新；历史与提交详情之间切换保持已加载历史。增删行统计后台补齐，不阻塞首屏或操作按钮；同仓库过期响应受请求序号守卫保护，轮询与正在运行的摘要共享等待状态。
+- 新增只读 `scripts/performance-probe.mjs <绝对仓库路径> [轮数] [可选宿主模块路径]`，测量真实 API handler、Git 命令耗时与 4 并发槽的逐仓库摘要，不启动服务器或修改被测仓库。
+- Windows / Node.js 24.9.0，使用 `D:/workspace/xiaoxi/antsdata` 的 8 个真实仓库、现有 desktop 安装版与优化源码各顺序测 3 轮：发现仓库的首轮 2190 → 555 ms；状态中位数 612 → 236 ms；分支 946 → 291 ms；历史 373 → 330 ms；8 仓库摘要 2112 → 1068 ms。缓存命中后的每轮 Git 进程从 71 降到 43（含单仓库首屏、统计和 8 仓库列表）。数据为本机实测，首轮不代表磁盘冷缓存，历史查询逻辑未改。
+- 验证：全部项目测试 **121/121 通过**，含真实 Git 的空/首次提交前仓库、detached、分歧与缺失上游、linked worktree、空格/中文重命名路径及冲突状态。隔离 Chrome 的仓库探针 `--full` 通过：远程就绪不再重复首轮、延迟统计不阻塞操作栏与加载更多、自动轮询与首轮共享等待、详情/历史往返与紧凑模式标签切换不重新拉取页面、过期统计/刷新被按轮次拒绝、缓存先写与后写两种合并顺序均正确，1440/360/320/1100 四档无横向溢出，无页面错误；SSR 4/4；host/client 语法与 `npm pack --dry-run`（20 个文件）通过。
+- 当前记录的性能验证直接调用真实宿主 handler，客户端专项探针使用真实客户端与模拟宿主；均不能替代现有 GUI 的数据态验证。新版本尚未安装到当前 profile，运行中的 GUI 尚未更新。
+- 本机安装联调（2026-10-14，经用户授权）：先 `dsh plugin --profile desktop remove dsh-git-panel` 清理指向已删除 tarball 的旧依赖，再通过官方 `dsh plugin --profile desktop add file:.local/install/dsh-git-panel-0.1.0.tgz` 安装到当前桌面 profile；`dsh.profile.bundles` 声明未变，安装产物 `src/index.js`、`src/client.js` 与源码 SHA256 一致。安装源 tarball 位于 `.local/install/`（git 忽略），profile 依赖按 file: 引用它，删除该文件会破坏后续依赖解析。运行中的宿主需重启加载新模块。
+
+## v0.1.0 — 2026-10-13
+
+**类型**：feat / fix / chore / docs（独立项目与 Git 仓库列表）
+
+- 基于 dsh-ide-git 0.18.2，固定上游提交 `b4e4b5a176de7da9060d1225d9ed027a8df8472c`；保留 MIT 许可证、版权、基线 Git 提交与 `upstream` 远程。
+- 独立包名、manifest、host/client、API、loader/config、locale、tabs、storage 与 CSS/DOM 前缀；Git 可执行文件覆盖变量使用 `DSH_GIT_PANEL_BIN`。
+- 默认可折叠仓库列表，面板标题为 Git。每行显示名称、分支、变更文件数，提供刷新、全部暂存和历史工作台入口；展开复用变更/提交组件，支持暂存、取消暂存、提交、提交并推送、确认丢弃和可用的撤回句柄。
+- 按工作区、session 与仓库隔离摘要、草稿、文件选择、忙碌状态和错误；展开过的组件在折叠及工作台往返时保留草稿。行操作和 diff 预览显式携带该行 repoRoot；工作台旧摘要、分支、历史、提交详情、diff 与错误响应受身份守卫保护。
+- 摘要通过 4 个并发槽共享调度；列表可见时每 12 秒读取轻量摘要，隐藏时停止轮询。扫描清理使用独立 token，失败写入不会因使旧摘要失效而卡死加载。失败提交保留草稿；提交成功但推送失败及丢弃无法撤回的提示在刷新后保留，后者清除不适用于本次丢弃的旧 Undo 按钮。修复变更行 memo 遗留的过期菜单回调。
+- 写队列按 Git checkout 根路径和实际文件系统路径规范化，子目录、路径别名和 Windows 大小写变体共享队列，不同仓库与 linked worktree 保持独立；补齐 `rebaseAbort`。保留 Git argv 调用、confirm、冲突与撤回守卫。新增 4 条真实 Git/受控写入回归。
+- 新增 `scripts/repositories-probe.mjs`：真实客户端与 React 19.2、模拟宿主/Git、隔离 Chrome profile，验证独立草稿和忙碌状态、目标仓库、工作台往返、跨仓库 diff、失败重试、部分成功与 Undo 提示、旧摘要/工作区响应及布局。报告与截图存放于忽略的 `.local/repositories-probe/`，测试 bundle 不改变生产无构建入口。
+- 更新中英文 README、开发约束与 UPSTREAM；保留上游截图来源，移除上游发布身份；发布工作流仅手动触发。SSR 支持 `DSH_PROFILE` 和跨平台 file URL。
+- 验证：Node.js 24.9.0 / Windows 下 `npm test` **116/116 通过**；host/client 语法及专项探针语法通过；隔离 React 19.2.0 的 SSR **4/4 通过**；扩展后的浏览器 `--full` 全部通过，含 1440×860、360×820、320×640、1100×300 无横向溢出；`npm pack --dry-run` 通过（20 个文件）。沙箱子进程管道与 npm 缓存限制通过获准的同命令重试完成验证。
+- 本机安装联调（2026-10-14）：经用户授权，通过官方 `dsh plugin --profile desktop add file:...` 安装到当前桌面 profile；使用 tarball 避免源码链接回写，仅启用本项目 bundle。当前原地址的真实 API 已发现工作区与嵌套仓库，嵌套仓库摘要读取成功。
+- 修复首次提交前仓库的摘要：优先读取 symbolic HEAD，保留 detached HEAD 的原回退路径；新增真实 Git 用例覆盖空/有变更的 unborn 仓库、真实 diffstats、延迟统计、detached HEAD、上游分歧与 linked worktree。API 与仓库测试 **58/58 通过**，语法和 diff 检查通过。修复版已安装，宿主文件与源码 SHA256 一致。
+- **当前安装验证边界**：运行中的宿主仍缓存更新前模块，外层 unborn 仓库的摘要仍报旧 HEAD 错误，需重启现有实例才能加载修复。独立浏览器访问当前 GUI 返回 401，现有 Chrome 没有该 origin 的登录页面或专用 cookie；真实 GUI 模块、Git 入口、数据行与工作台往返尚未验证。未重启、未发送消息或创建会话，未对用户仓库执行 Git 写入；未发布或推送。请求与会话工作区范围绑定，以及撤回存储的路径别名一致性，仍属后续任务。
+
+## 上游历史 — dsh-ide-git（原文保留）
+
+以下版本属于上游项目，并非 dsh-git-panel 的发布记录。原项目截图与 GitHub issue 编号也应按上游上下文理解。
 
 > 倒序排列,新版本条目在最上面。条目格式:`## vX.Y.Z — YYYY-MM-DD` + 类型(feat / fix / docs / chore)+ 要点 + 相关链接。
 > 纪律见 AGENTS.md「变更记录纪律」:发版前先更新本文件并随版本提交。

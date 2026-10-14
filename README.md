@@ -1,176 +1,99 @@
-# dsh-ide-git
-
-[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+# dsh-git-panel
 
 简体中文 | [English](README_EN.md)
 
-> 给 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 的侧边栏装一个 **IDE 级的 Git 工具窗口**——左边分支树、中间提交图谱、右边变更与提交详情,操作方式对齐 JetBrains 系 IDE 的 Git 面板;以 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 原生 Tab 的形式注册,右侧栏与底部面板都能用;v0.13.0 起还可挂在**主对话区**(「对话 / 轨迹」旁边的 Git 标签页,设置里可关)。
+> 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供 Git 面板，基于 [KannaKuron/dsh-ide-git](https://github.com/KannaKuron/dsh-ide-git) 二开。默认提供类似 VS Code Source Control 的可折叠仓库列表，并保留完整的 Git 工作台。
 
-DSH 自带的 Git 面板覆盖「暂存 / 提交 / 还原 / 看历史」;`dsh-ide-git` 补齐 IDE 用户习惯的那一层:**分支树 + 右键分支操作 + 提交图谱 + 提交详情 + 变更列表 + 提交框**。
+当前版本：**0.1.0**。上游基线：**dsh-ide-git 0.18.2**，提交 `b4e4b5a176de7da9060d1225d9ed027a8df8472c`。来源、许可证和同步方法见 [UPSTREAM.md](UPSTREAM.md)。
 
-## 它解决什么
+## 当前能力
 
-- **分支管理没有树**:内置面板只有一个分支下拉。这里给出 `HEAD(当前分支) / 本地 / 远程 / 标签` 的分组树,每个分支带 ahead/behind 角标、上游、worktree 占用标记(`W`)。
-- **历史只是列表**:这里画出提交图谱(lane 拓扑 + 分支/标签 ref 徽章),支持加载更多与过滤(文本 / 哈希 / 作者)。
-- **想看某个提交改了什么**:点提交直接进详情——作者、日期、完整提交信息、变更文件(含 +/− 行数),点文件看逐行 diff(红绿 + 行号 + hunk 高亮)。
-- **想指给 AI 一段代码**:在 diff 窗里选中几行、右键,把「哪个文件哪几行」(附提交或工作区上下文)直接发进当前会话的输入框。
-- **想比较分支**:分支右键即可与当前分支比较,结果按文件与提交数汇报。
-- **操作要够全**:签出、从任意分支/提交新建分支、重命名、删除、合并到当前、变基当前到此、新建标签、cherry-pick、还原提交、重置(保留/丢弃)、fetch / pull --ff-only / push(确认后)。
+继承上游的分支树、提交图谱、变更与暂存、提交框、文件差异、提交详情、stash、标签、分支及远程操作、AI 提交信息与会话插入能力。
 
-## 效果
+插件支持 Better Sidebar 的侧栏和底部工作台；未安装 Better Sidebar 时使用 DSH 原生右侧栏；还提供主对话区 Git 标签页。已经能够发现工作区及嵌套仓库、已初始化子模块，并选择一个仓库操作。
 
-> 下面这些图取自一个**只装了两个插件**(`dsh-better-sidebar` + 本插件)的干净 DSH,绑定在一个虚构的演示仓库上(见 `scripts/demo-repo.mjs`),画面里没有真实工作区、没有壁纸插件、也没有其它面板。
+默认面板标题为 **Git**。每行显示仓库名称、分支和变更文件数，提供刷新、全部暂存及进入历史工作台的动作；展开后显示暂存、更改、未跟踪文件和提交框。暂存、取消暂存、提交、提交并推送、丢弃确认、可用的撤回句柄和 diff 预览均绑定该行的仓库。
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/1-bottom-workbench.png" alt="底部工作台:分支树 / 提交图谱 / 变更与提交"/></td>
-<td valign="top"><b>底部工作台(宽扁 → 三栏)</b><br/>左列是 IDEA 式动作条:按<b>自身高度</b>决定放几个按钮,放不下的收进 <code>⋯</code>,末尾 <code>⚙</code> 可调顺序与显隐;中列是提交列表——列序与 IDEA 一致(<b>日期 → 提交人 → 图谱 → 分支标签 → 提交信息</b>),上方一排筛选(文本/哈希、分支或标签、提交人、日期、路径)与排序方向;右列是变更分组与提交框。</td>
-</tr>
-</table>
+提交草稿、展开状态、文件选择、忙碌状态和错误按仓库隔离；折叠或往返历史工作台会保留仓库行草稿。失败提交保留草稿；提交成功但推送失败会清空已提交草稿并保留失败提示；无法生成撤回快照的丢弃会明确提示。切换工作区或会话后，旧请求不能覆盖当前界面。
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/2-commit-menu.png" alt="提交右键菜单"/></td>
-<td valign="top"><b>提交右键</b><br/>详情、复制修订号、签出该修订、在此新建分支、新建标签、优选(Cherry-Pick)、还原提交、重置到此(保留/丢弃更改)——破坏性项标红,菜单在面板内定位,底部工作台里同样能弹出来。</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/3-branch-undo.png" alt="删除分支后的撤回浮窗"/></td>
-<td valign="top"><b>删除可撤回</b><br/>删除分支/贮藏是<b>真删除</b>,但宿主在动手前记下了对象 id:右下角浮窗点「撤回」即可恢复(一次性、30 分钟内有效);错过浮窗还有顶栏的「最近可撤回的操作」入口。删除 <code>main</code>/<code>master</code> 需要输入分支名确认。</td>
-</tr>
-</table>
+摘要通过最多 4 个并发槽共享调度，列表可见时每 12 秒轮询轻量摘要；隐藏时停止轮询。写队列使用 Git 根路径与实际文件系统路径，合并子目录、路径别名及 Windows 大小写变体；不同仓库和 linked worktree 保持独立。`rebaseAbort` 已纳入写队列。请求与会话工作区的范围绑定仍待完善。
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/4-rail-settings.png" alt="动作条设置:排序与显隐"/></td>
-<td valign="top"><b>动作条可配置</b><br/>拖动或用箭头调整顺序、眼睛图标逐项显隐,配置只存「排列 + 隐藏」并做过归一化,以后新增动作不会打坏旧配置。</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/5-commit-detail.png" alt="提交详情与逐行 diff"/></td>
-<td valign="top"><b>提交详情</b><br/>完整提交信息、作者与日期、变更文件列表(带 +/− 行数),点文件看逐行 diff(行号 + hunk 高亮 + 红绿底)。</td>
-</tr>
-</table>
+## 环境与开发
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/6-right-sidebar.png" alt="原生右侧栏里的同一面板"/></td>
-<td valign="top"><b>同一个注册,两种布局</b><br/>窄而高的<b>原生右侧栏</b>改用堆叠布局:动作条铺成顶部一行、变更在先、提交列表随后——面板只量自己的尺寸,从不猜自己在哪个容器里。截图顺序、演示仓库与干净环境都由 <code>scripts/screenshots.mjs</code> 复现。</td>
-</tr>
-</table>
+- Git 命令行可用。
+- 插件运行要求 Node.js >=18；开发和 CI 推荐 Node.js 24（当前上游测试已使用较新的 Node API）。
+- DSH >=0.1.6-alpha.2；Better Sidebar >=0.12.0，为可选依赖。
+- 当前宿主和客户端均为普通 JavaScript，无构建步骤。日常测试不需要安装 DSH 的 peer 依赖。
 
-## 右键发送到对话
+在项目目录执行：
 
-面板里的一切都能右键塞进**当前会话的输入框**——走 DSH 官方的 composer 插入通道(不动你已输入的文字,追加在末尾;发送中或服务不在时自动退化为复制到剪贴板并提示,绝不死点击):
+```sh
+npm test
+npm run check:syntax
+npm run check:ssr
+npm pack --dry-run
+```
 
-- **提交** → `git 提交 47ad017「提交标题」(仓库 xxx)`:短哈希 + 提交信息 + 仓库,一段话指名一个修订;
-- **分支** → `git 分支 main(仓库 xxx)`;
-- **文件**(变更列表与提交详情的文件行)→ 一个 `@路径` 文件引用 chip(DSH 原生 @ 语法,含空格的路径自动加引号),或者只发文件路径;
-- **diff 选中行**:在提交详情或工作区变更打开的 diff 窗里**选中一段文本再右键** → 「发送选中行到对话」:`@文件` chip + 行号说明——提交场景是「第 N–M 行(提交 47ad017「标题」@ 当前分支)」,工作区场景是「第 N–M 行(工作区已暂存 / 未提交)」。行号由选区所在的 diff 行按 hunk 头换算成**新文件行号**;选中的全是删除行时用旧号并标注「旧行号」。选区落不到可定位的 diff 行上时,菜单退化为「发送选中片段到对话」(原文截断 600 字符),不编造行号;菜单里同时有「复制选中引用」。没有选区时右键保持浏览器默认菜单。
+SSR 检查读取本机 DSH profile 中的 React，默认选择 `web`；可以通过 `DSH_HOME` 和 `DSH_PROFILE` 指定位置。没有可用 profile 或 React 时会明确跳过。Windows 桌面 profile 示例：
 
-配套已经就位的几件事:变更文件行与详情文件行的行首图标按扩展名着色(DSH 自家 FileTypeIcon);diff 预览用 DSH 自家 DiffBlock 组件渲染(红绿底、复制 / 换行工具栏,视觉与宿主一致);diff 窗高度可拖拽调节并按位置记忆;整个面板还可以挂进**主对话区**——「对话 / 轨迹」旁的 Git 标签页,插件设置里可关。
+```powershell
+$env:DSH_PROFILE = 'desktop'
+npm run check:ssr
+```
 
-## 挂在哪里:两个宿主,一个面板
+## 仓库列表浏览器验证
 
-本插件只注册一次,落到哪个面上由**宿主**决定,两条通道互斥:
+`scripts/repositories-probe.mjs` 使用真实客户端入口、React 19.2 和模拟宿主/Git API，在隔离 Chrome profile 中验证数据态界面。测试依赖为项目 `.local/browser-fixture/node_modules` 下的 `playwright-core@1.58.2`、`esbuild@0.25.12`，以及 `.local/ssr/profiles/web/node_modules` 下的 `react@19.2.0`、`react-dom@19.2.0`。它们不属于插件运行依赖或生产构建步骤。
 
-| 宿主 | 条件 | 你得到什么 |
-|---|---|---|
-| **dsh-better-sidebar**(底座,可选) | 装了它 | 它的 Tab 系统:右侧栏里的原生 Tab **加上底部工作台**;它的设置页 `侧边卡片` 里能看到本插件的卡片 |
-| **DSH 原生右侧栏** | 没装底座时自动接管 | 右侧栏 Guide 页里的 **Git** 胶囊 → 点开就是同一个面板 |
-| **主对话区标签页**(v0.13.0 起) | 总是可用(可在设置里关闭) | 会话顶部「对话 / 轨迹」旁多一枚 **Git** 标签,点它整块主对话区变成 Git 工具窗口;开关在插件设置 →「面板放置」 |
+先执行 `node scripts/repositories-probe.mjs --prepare`，再执行输出中的 esbuild 可执行文件命令，最后运行 `node scripts/repositories-probe.mjs --full`。源码或探针修改后需要重新 prepare 和构建测试 bundle。报告、隔离浏览器 profile 及 1440×860、360×820、320×640、1100×300 截图保存在忽略的 `.local/repositories-probe/` 中。
 
-底座在场时以它为准(它还带底部工作台);底座**晚到**会顶掉原生注册再挂到它那边。所以**只装本插件也能用**,没有任何前置要求。
+完整探针覆盖独立草稿、折叠保留、目标仓库与忙碌状态隔离、工作台往返、跨仓库 diff、提交失败重试、推送部分成功、丢弃撤回提示、失败写入与旧摘要交错、工作区旧响应和窄屏溢出。**此测试不等同于真实 DSH 宿主联调**；AGENTS.md 要求的安装后测试实例仍需显式 URL 和 `DSH_CHECKOUT` 的专项探针。已获授权安装到当前桌面 profile，真实仓库发现和嵌套仓库摘要成功；首次提交前仓库修复已安装并通过 58 项 API/仓库测试，但运行中的宿主仍缓存旧模块，需要重启加载。独立浏览器尚无当前 GUI 的登录会话，真实页面数据态验证仍待完成。
 
-同一个面板会出现在形态完全不同的面上,所以布局靠量而不是猜:
+## 本地安装
 
-| 面 | 形态 | 本插件的布局 |
-|---|---|---|
-| 右侧栏(原生的,或底座桥接过来的) | 窄而高 | `stack`:变更区在提交历史之上,分支树可收起,详情/差异占满主区 |
-| 底部工作台(底座自有) | 宽而扁 | `columns`:分支树 · 提交图谱 · 变更与提交框,三栏并排——就是 JetBrains Git 工具窗口的样子 |
+此项目尚未发布到 npm。需要安装时，在项目目录先打包，再通过 DSH CLI 安装本地包：
 
-插件不猜自己在哪儿,而是用 `ResizeObserver` 量自己的容器:宽 ≥ 600px 且宽 ≥ 高 × 1.15 走三栏,否则走纵向堆叠(宽度说了算,高度没有否决权)。自由浮窗、移动端抽屉同样自适应。
+```sh
+npm pack
+dsh plugin --profile desktop add file:./dsh-git-panel-0.1.0.tgz
+```
 
-## 功能一览
+宿主代码更新后需要重启当前 DSH 实例才能生效；客户端更新需要重新加载页面。新项目初始化不会自动安装插件或重启实例。
 
-| 区域 | 能力 |
+## 独立插件标识
+
+| 用途 | 标识 |
 |---|---|
-| 动作条 | IDEA 式左侧竖排(底部工作台)/ 顶栏下一行横排(右侧栏):刷新、新建分支、签出、删除、比较、显示差异、贮藏、新建标签、收藏、抓取、拉取、推送。**按可用空间自动决定放几个**,放不下的收进 `⋯ 更多`;末尾 `⚙ 设置` 可拖动排序、逐项显隐(存 `dsh-ide-git.rail.v1`)。每个按钮按当前状态点亮/置灰(没有其他分支就不能删除/签出/比较,没有远程就不能抓取/推送,没有上游就不能拉取,没有变更就没有差异可看) |
-| 状态行 | 当前分支、上游、`↑ahead ↓behind`、stash 数量、忙碌指示 |
-| 分支树 | `HEAD / 本地 / 远程 / 标签` 分组(可折叠)、过滤框、星标当前分支、ahead/behind 角标、worktree 占用标记;本地蓝 / 远程紫 / 标签黄 / HEAD 绿 |
-| 分支右键 | 签出、将当前分支变基到此、合并到当前分支、与当前分支比较、从该分支新建分支、重命名、删除(当前分支禁用)、更新(Fetch)、推送、发送到对话(分支名 + 仓库) |
-| 历史筛选 | 文本或哈希、分支或标签、提交人、日期(今天 / 近 7 天 / 近 30 天 / 今年),外加排序方向(新→旧 / 旧→新)与一键清除;路径筛选回车后由 git 服务端过滤(`git log -- <path>`) |
-| 提交列表 | 列序对齐 IDEA:**日期 → 提交人 → 图谱 → 分支标签 → 提交信息**;lane 拓扑图整格连线(相邻行像素对齐)、HEAD 空心点、refs 徽章(HEAD 绿 / 本地蓝 / 远程紫 / 标签黄,最多 3 个 + `+n`)、加载更多(每页 120) |
-| 提交右键 | 提交详情、复制修订号、签出该修订(确认)、在此新建分支、新建标签、cherry-pick、还原提交、重置到此(保留 / 丢弃更改)、发送到对话(短哈希 + 提交信息 + 仓库) |
-| 提交详情 | 完整提交信息、作者/日期、变更文件列表(+/−),点文件看逐行 diff |
-| diff 窗 | DSH 自家 DiffBlock 渲染(红绿底 + 复制/换行工具栏)、高度可拖拽调节并按位置记忆;**选中 diff 行右键**把行级引用发进对话——`@文件` + 第 N–M 行 + 提交(短哈希/标题/当前分支)或工作区(已暂存/未提交)上下文,删除行标注旧行号,选区定位不到行时发选中片段(截断 600 字符),另有「复制选中引用」 |
-| 变更列表 | 冲突 / 已暂存 / 更改 / 未跟踪 四组,行内 暂存 / 取消暂存 / 丢弃,分组级「全部暂存 / 全部取消暂存」,点击行看 diff |
-| 提交框 | 多行提交信息、`Ctrl+Enter`(macOS `Cmd+Enter`)提交、修补上次提交(`--amend`) |
-| 文件右键 | 显示差异、暂存/取消暂存、丢弃更改、复制路径、发送到对话(`@文件` 引用 chip 或文件路径) |
-| 安全与撤回 | 删除分支 / 删除贮藏后右下角弹提示条,点「撤回」即可恢复(真删除 + 按删除前记下的对象 id 重建,一次性、30 分钟内有效),顶栏的撤回图标里也能找到最近删除;`main`/`master`/`trunk` 的删除要求输入分支名确认,所有破坏性确认框焦点默认在「取消」;同一仓库的写操作在宿主串行执行;仓库里还有未结束的 merge / rebase / cherry-pick / revert / bisect 时,相关动作全部置灰并说明原因 |
+| npm 包 / host / client module / locale namespace | `dsh-git-panel` |
+| 插件清单 ID | `dsh-external/dsh-git-panel` |
+| Cordis loader row / config namespace | `git-panel` |
+| Git HTTP API | `/dsh-git-panel/api` |
+| Better Sidebar tab | `dsh-git-panel:panel` |
+| 原生主面板 / 预览面板 | `dsh-git-panel` / `dsh-git-panel-preview` |
+| 主对话区 view ID | `git-panel` |
+| 浏览器存储 | `dsh-git-panel.*` |
+| CSS / DOM class prefix | `dgp-` |
 
-## 安装
+这些注册、存储和样式标识与上游分开，后续修改不会复用上游的设置空间。
 
-```sh
-# 本插件可以单独使用:面板直接出现在 DSH 原生右侧栏
-dsh plugin --profile web add dsh-ide-git
-# 可选底座:装了它才会多出底部工作台,并跟随它的侧栏布局
-dsh plugin --profile web add dsh-better-sidebar
-# 重启 dsh web
-```
+## 后续开发顺序
 
-装好后打开任意会话:
+1. 在获准的隔离 DSH 测试实例中验证安装、注册、主题和宿主集成。
+2. 完善请求与会话工作区范围绑定，把一致路径身份扩展到撤回存储等场景。
+3. 支持 VS Code 仓库扫描配置，完善大型工作区的摘要与统计加载。
+4. 保留图谱、diff 与详细工作台，逐步拆分维护成本较高的模块。
 
-- **只装本插件**:点会话头右侧的「打开右侧边栏」→ Guide 页里的 **Git** 胶囊 → 面板打开;
-- **装了底座**:会话头右侧的面板开合按钮 → 面板 Tab 条右侧 `+` → 选 **Git**(底部工作台);原生右侧栏的 `+` → **Git**(同一注册,同一份状态);
-- 底座在场时,它的设置页 **侧边卡片** 分区里也会出现本插件的卡片(标题 / id / 启用开关),随时停用。
+## 目录
 
-### 兼容性
+- `src/index.js`：宿主 Git API。
+- `src/client.js`：客户端注册、界面和样式。
+- `cordis.patch.yml`、`dsh.plugin.json`：安装挂载与插件清单。
+- `tests/`：冒烟、真实仓库 API、图谱和仓库发现测试。
+- `scripts/`：SSR 自检、演示仓库、隔离仓库列表探针及要求真实测试实例的宿主集成探针。
+- `docs/screenshots/`：保留的上游演示截图，尚不是本项目的实测截图。
+- [AGENTS.md](AGENTS.md)：后续开发规则。
+- [CHANGELOG.md](CHANGELOG.md)：本项目变更记录及保留的上游历史。
 
-- `engines.dsh` 声明为 **`>=0.1.2-0`** ——0.1.2 起的全部版本都算,包括 `0.1.5-rc` / `0.1.6-alpha` 这类**预发布**(纯 semver 下预发布默认不匹配任何范围,所以起点写成了 `-0`)。**同一个值也是 `@deepseek-ai/dsh` 的 peerDependencies**:dsh 0.1.7 起会强制执行 peer 里的 `@deepseek-ai/dsh*` 范围(不满足就不加载),而 `engines` 没有任何读取方——写进 peer 才算数。范围是**开放下界、不封顶**,所以 0.1.7 起的任何宿主(含 rc / alpha 预发布)都不会因此被禁用;0.1.0–0.1.6 没有这套检查,完全不受影响。
-- 只依赖三样长期契约:宿主半的 `webServer.register({ kind: 'prefix' })` 路由、客户端半的 `window.__ModuleLoader__.load({ id, factory })`、以及客户端的 `slots` 服务。**不引用 `ui-primitives` 图标集**(图标全是自带 SVG),所以宿主删改图标不会波及本插件。
-- 底座是**可选** peer:没装、装坏了、或它自己要等上游修,都不影响本插件挂到原生右侧栏。
+## 许可证
 
-### 界面语言
-
-跟随 DSH 的语言设置(`ctx.locale`)实时切换,内置 **21 种**词典:简繁中文(含 `zh-HK` / `zh-MO` / `zh-TW`)、英语、日语、韩语、德语、法语、意大利语、葡萄牙语、俄语、荷兰语、波兰语、瑞典语、土耳其语、印尼语、越南语、泰语、印地语、阿拉伯语。词典同时注册进 DSH 的 locale 注册表(`ctx.locale.register`);解析顺序是「精确 tag → 主语言子标签 → 英文」,而**英文始终是键完整的那本**,所以任何未覆盖的语言都回退英文,不会露出键名。
-
-词典就在 `src/client.js` 的 `LOCALES` 表里:一门语言一个条目,条目前面有一行 `/* locale: <tag> */` 标记。**校验是自动的**——冒烟测试强制每本词典的键集与中文完全一致(缺键会静默回退英文,面板就成了半翻译状态,那正是这条测试要挡住的)。
-
-## 工作原理
-
-```
-宿主半 src/index.js                       客户端半 src/client.js
-  POST /dsh-ide-git/api/<method>            ctx.betterSidebar.registerTab({ id: 'dsh-ide-git:panel' })
-  └─ spawn('git', argv, { cwd })            └─ Panel:ResizeObserver → columns / stack
-     └─ 会话工作区 = cwd(客户端 scope.cwd 传入)
-```
-
-- **宿主半**:一个前缀路由 `/dsh-ide-git/api`,方法表 32 个(`summary` / `branches` / `log` / `commitDetail` / `diff` / `compare` / `stage` / … / `push` / `tagDelete` / `version`)。所有 git 调用都是 **argv 数组 + `spawn`**(没有 shell 字符串、没有 `exec`),参数先过校验(绝对路径、ref 不以 `-` 开头、无控制字符、路径不越出仓库)。
-- **客户端半**:无构建、单文件、`window.__ModuleLoader__.load({ id, factory })` 包装,只 `require('react')`(DSH 客户端基线模块白名单内)。
-- **信任围栏**:路由挂在 DSH 自己的 web server 上,天然同源;只有 Host 为 loopback,或浏览器标记 `Sec-Fetch-Site: same-origin/same-site` 的请求才会被服务。
-- **破坏性操作**:`push` / 硬重置 / 强制删分支 / 丢弃未跟踪文件 / 删除 stash 都必须显式 `confirm: true`,UI 侧一律弹二次确认。
-
-## 限制与路线图
-
-- **v0.1.0 只覆盖主路径**:分支树 + 图谱 + 变更 + 提交 + 详情 + 常用分支/提交操作。下面的还在路上:
-  - 变更/提交的**多选与批量操作**、按文件部分提交(类似 IDEA 的 Changelist);
-  - 交互式变基(`rebase -i`)、fixup/squash、补丁(format-patch/apply);
-  - 三方合并冲突编辑器、冲突解决动作(接受本地/远端);
-  - blame / 文件历史视图、行级注释;
-  - 设置页的插件自有开关(提交后自动刷新、diff 上下文行数等);
-  - worktree 视图(当前只在分支行标注占用)。
-- **只面向 `web` profile**:`dsh.client.platform` 为 `web`;桌面客户端的 renderer 复用同一套 shell 资产,但尚未真机验证。
-- **不写 `.git`**:所有操作都通过 `git` 命令走正常索引/引用,插件不直接改 `.git` 内部文件。
-- **大仓库**:提交列表分页(120/页),diff 输出上限 400KB(超出截断并标记)。
-
-## 开发
-
-```sh
-npm test      # 两层:smoke(文件级:清单一致性、客户端包装、白名单、确认守卫、方法表)
-              #      + api(临时真实仓库直驱宿主路由:解析、暂存/提交/分支/标签/stash、全部守卫与信任围栏)
-```
-
-本机联调:把仓库加到 web profile 后重启 `dsh web`;客户端半改动由 DSH 热加载,宿主半改动需要重启。
-
-## 许可
-
-MIT © KannaKuron
+[MIT](LICENSE)。保留上游 `Copyright (c) 2026 KannaKuron` 声明。本项目尚未获得上游插件的市场收录或 npm 发布身份；仓库地址确定后再补充自身的发布信息。

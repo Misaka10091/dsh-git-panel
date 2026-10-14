@@ -1,7 +1,7 @@
 /**
  * Builds the throwaway demo repository used by docs/screenshots.
  *
- *   node scripts/demo-repo.mjs [target-dir]      (default /tmp/dsh-ide-git-demo)
+ *   node scripts/demo-repo.mjs [target-dir]      (default /tmp/dsh-git-panel-demo)
  *
  * Everything in it is fictional: a small note-taking app with a branched and
  * merged history, tags, a bare 'origin' so ahead/behind badges show up, one
@@ -12,7 +12,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync, appendFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-const target = process.argv[2] === undefined || process.argv[2] === '' ? '/tmp/dsh-ide-git-demo' : process.argv[2]
+const target = process.argv[2] === undefined || process.argv[2] === '' ? '/tmp/dsh-git-panel-demo' : process.argv[2]
 const origin = target.replace(/\/$/, '') + '-origin.git'
 const clone = target.replace(/\/$/, '') + '-clone'
 const AUTHORS = [

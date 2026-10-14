@@ -1,8 +1,6 @@
 name: ci
 
-# Lightweight checks only: the smoke test is file-level (no Cordis runtime, no
-# browser). npm publishing is intentionally NOT wired up in this repo yet —
-# packaging/registry work lands after the feature set stabilises.
+# Test the host API, client contracts, graph and repository discovery.
 on:
   push:
     branches: [main]
@@ -10,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  smoke:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -18,5 +16,9 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Smoke test
+      - name: Check entry syntax
+        run: npm run check:syntax
+      - name: Run tests
         run: npm test
+      - name: Check package contents
+        run: npm pack --dry-run

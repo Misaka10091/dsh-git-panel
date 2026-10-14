@@ -1,5 +1,5 @@
 /**
- * dsh-ide-git — smoke test (file-level only: no Cordis runtime, no browser).
+ * dsh-git-panel — smoke test (file-level only: no Cordis runtime, no browser).
  *
  * Guards the invariants that would silently break the plugin at load time:
  * manifest/bookkeeping consistency, the no-build client wrapper, the baseline
@@ -38,7 +38,7 @@ const BASELINE = new Set([
 test('release bookkeeping: package.json and dsh.plugin.json agree', () => {
   assert.equal(manifest.version, pkg.version)
   assert.equal(manifest.main, './' + pkg.main)
-  assert.equal(pkg.name, 'dsh-ide-git')
+  assert.equal(pkg.name, 'dsh-git-panel')
   assert.match(manifest.id, /^dsh-external\//)
   assert.equal(pkg.license, 'MIT')
   assert.ok(exists('LICENSE'))
@@ -121,18 +121,18 @@ test('the dsh peer survives the runtime compatibility check', () => {
   assert.equal(pkg.peerDependenciesMeta?.['@deepseek-ai/dsh']?.optional, true)
 })
 
-test('cordis patch mounts exactly one row named dsh-ide-git', () => {
+test('cordis patch mounts exactly one row named dsh-git-panel', () => {
   // Commented-out examples must not count: only live YAML lines are the mount.
   const active = patch.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n')
   assert.match(active, /- insert:/)
   const names = active.match(/name: '([^']+)'/g) || []
-  assert.deepEqual(names, ["name: 'dsh-ide-git'"])
-  assert.match(active, /id: ide-git/)
+  assert.deepEqual(names, ["name: 'dsh-git-panel'"])
+  assert.match(active, /id: git-panel/)
 })
 
 test('client half uses the no-build ModuleLoader wrapper', () => {
   assert.match(client, /window\.__ModuleLoader__\.load\(\{/)
-  assert.match(client, /id: 'dsh-ide-git'/)
+  assert.match(client, /id: 'dsh-git-panel'/)
   assert.match(client, /factory: \(require\) =>/)
   assert.doesNotMatch(client, /^\s*import\s/m, 'client half must not use import')
   assert.doesNotMatch(client, /\bexport\s+(default\s+)?(const|function|class)\b/)
@@ -466,7 +466,9 @@ test('the diff pane context menu reads the selection before the menu opens (v0.1
   // so a multi-root workspace cannot land the diff in the wrong repository.
   assert.match(client, /if \(previewDiff\(seed\) === true\) return/,
     'every diff verb goes through the external-first funnel')
-  assert.match(client, /worktree: repoRoot, repoRoot: repoRoot/,
+  assert.match(client, /const targetRoot = typeof seed\.repoRoot === 'string' \? seed\.repoRoot : repoRoot/,
+    'the external diff prefers the clicked repository over the selected workbench')
+  assert.match(client, /worktree: targetRoot, repoRoot: targetRoot/,
     'the external diff ref pins the repository root')
 
   // Nine new keys × 21 gates (the key-set test checks exact equality; this
@@ -513,7 +515,7 @@ test('the conversation seat convergence is a controlled loop with a content trig
 test('client API base is mount-relative (sub-path support, issue #4)', () => {
   // dsh 0.1.7 serves the shell with <base href="./">: document.baseURI is the
   // mount the page loaded from, and fetch() resolves relative URLs against it.
-  // An origin-absolute base ('/dsh-ide-git/api') would escape the mount and
+  // An origin-absolute base ('/dsh-git-panel/api') would escape the mount and
   // 404 behind any strict prefix-stripping proxy.
   const match = client.match(/const API_BASE = '([^']+)'/)
   assert.ok(match, 'API_BASE declaration missing')
@@ -523,12 +525,12 @@ test('client API base is mount-relative (sub-path support, issue #4)', () => {
   // serving shapes: a prefix-stripping proxy mount and the origin root.
   assert.equal(
     new URL(base + '/repos', 'http://dsh.internal/dsh/').pathname,
-    '/dsh/dsh-ide-git/api/repos',
+    '/dsh/dsh-git-panel/api/repos',
     'under a sub-path mount the call must stay inside the mount',
   )
   assert.equal(
     new URL(base + '/repos', 'http://dsh.internal/').pathname,
-    '/dsh-ide-git/api/repos',
+    '/dsh-git-panel/api/repos',
     'at the origin root the call must keep today\'s upstream path',
   )
   // The desktop renderer is the other document owner: it loads dsh-app://app/
@@ -561,22 +563,22 @@ test('plugin API calls fall back to the remote pairing proxy on auth rejection (
     + '\nreturn { remoteFallbackUrl: remoteFallbackUrl, isAuthRejection: isAuthRejection }')
   const atMount = helpers({ location: { href: 'http://dsh.internal/dsh/session' } },
     { baseURI: 'http://dsh.internal/dsh/' })
-  assert.equal(atMount.remoteFallbackUrl('dsh-ide-git/api/resolve'),
-    '/remote/dsh/dsh-ide-git/api/resolve', 'under a sub-path mount the retry stays inside the mount')
+  assert.equal(atMount.remoteFallbackUrl('dsh-git-panel/api/resolve'),
+    '/remote/dsh/dsh-git-panel/api/resolve', 'under a sub-path mount the retry stays inside the mount')
   const atRoot = helpers({ location: { href: 'http://dsh.internal/session/x' } },
     { baseURI: 'http://dsh.internal/' })
-  assert.equal(atRoot.remoteFallbackUrl('dsh-ide-git/api/resolve'),
-    '/remote/dsh-ide-git/api/resolve', 'at the origin root the retry keeps the plugin path')
-  assert.equal(atRoot.remoteFallbackUrl('dsh-ide-git/api/list?q=1'),
-    '/remote/dsh-ide-git/api/list?q=1', 'the query string survives the rewrite')
+  assert.equal(atRoot.remoteFallbackUrl('dsh-git-panel/api/resolve'),
+    '/remote/dsh-git-panel/api/resolve', 'at the origin root the retry keeps the plugin path')
+  assert.equal(atRoot.remoteFallbackUrl('dsh-git-panel/api/list?q=1'),
+    '/remote/dsh-git-panel/api/list?q=1', 'the query string survives the rewrite')
   // Without a document (SSR / exotic hosts) the page URL is the base, and
   // without either the catch branch degrades to a plain prefix.
   const pageBase = helpers({ location: { href: 'http://dsh.internal/dsh/session/' } }, undefined)
-  assert.equal(pageBase.remoteFallbackUrl('dsh-ide-git/api/resolve'),
-    '/remote/dsh/session/dsh-ide-git/api/resolve', 'the page URL resolves relative paths against its directory')
+  assert.equal(pageBase.remoteFallbackUrl('dsh-git-panel/api/resolve'),
+    '/remote/dsh/session/dsh-git-panel/api/resolve', 'the page URL resolves relative paths against its directory')
   const bare = helpers(undefined, undefined)
-  assert.equal(bare.remoteFallbackUrl('dsh-ide-git/api/resolve'), '/remote/dsh-ide-git/api/resolve')
-  assert.equal(bare.remoteFallbackUrl('/dsh-ide-git/api/resolve'), '/remote/dsh-ide-git/api/resolve',
+  assert.equal(bare.remoteFallbackUrl('dsh-git-panel/api/resolve'), '/remote/dsh-git-panel/api/resolve')
+  assert.equal(bare.remoteFallbackUrl('/dsh-git-panel/api/resolve'), '/remote/dsh-git-panel/api/resolve',
     'a leading slash is not doubled')
   // Only the auth fence trips the retry; real answers (200, 404, 422…) are
   // never masked by a second request.
@@ -607,25 +609,25 @@ test('the rc.2 surface contract: theme-owned menu material on its own layer', ()
   // CSS must not override either. The old rule painted its own opaque layer fill,
   // borrowed `--dsh-any-blur-card-panels` as the filter and re-added a neutral
   // border under a hand-rolled shadow — all three are now guarded.
-  const menu = cssRule('.dig-menu')
+  const menu = cssRule('.dgp-menu')
   assert.match(menu, /border:0/, 'an elevated surface carries the hairline inside its shadow, not a border')
   assert.doesNotMatch(menu, /background:var\(--dsw-alias-bg-layer-/, 'the menu must not override the theme material')
   assert.doesNotMatch(menu, /--dsh-any-/, 'platform CSS must not override the theme material')
   // Filtering stays on an isolated layer: on the card itself it would become the
   // backdrop root and the containing block of every descendant.
-  const material = cssRule('.dig-menu::before')
+  const material = cssRule('.dgp-menu::before')
   assert.match(material, /z-index:-1/, 'the material must paint on its own layer behind the rows')
   assert.match(material, /border-radius:inherit/)
   assert.match(material, /background:var\(--dsw-specific-menu,/)
   assert.match(material, /backdrop-filter:var\(--dsw-menu-backdrop-filter,/)
   assert.match(material, /pointer-events:none/)
   // Invariant 13 (panel-internal overlays) survives the restructure: the PANEL
-  // anchor moved to the new `.dig-menu-wrap` (the submenu needs a shared
+  // anchor moved to the new `.dgp-menu-wrap` (the submenu needs a shared
   // positioning parent), the card itself no longer carries position — but the
-  // wrapper is still absolute inside `.dig-root`, the scroller is a separate
+  // wrapper is still absolute inside `.dgp-root`, the scroller is a separate
   // box, and the theme's dark-menu stroke hook rides the card exactly as
   // MenuSurface sets it.
-  assert.match(cssRule('.dig-menu-wrap'), /position:absolute/)
+  assert.match(cssRule('.dgp-menu-wrap'), /position:absolute/)
   assert.match(menu, /isolation:isolate/)
   // border-box so `max-height: calc(100% - 8px)` caps the WHOLE card: content-box
   // sizing let the 8px of padding escape the cap, and a tall context menu in a
@@ -636,10 +638,10 @@ test('the rc.2 surface contract: theme-owned menu material on its own layer', ()
   // only balances against `left/top >= 4` in ContextMenu.
   assert.match(menu, /box-sizing:border-box/)
   assert.match(menu, /max-height:calc\(100% - 8px\)/)
-  assert.match(cssRule('.dig-menu-wrap'), /max-width:calc\(100% - 8px\)/)
-  assert.match(client, /className: 'dig-menu-scroll'/)
+  assert.match(cssRule('.dgp-menu-wrap'), /max-width:calc\(100% - 8px\)/)
+  assert.match(client, /className: 'dgp-menu-scroll'/)
   assert.match(client, /'data-menu-material': 'translucent'/)
-  assert.doesNotMatch(client, /createPortal/, 'overlays must stay inside .dig-root')
+  assert.doesNotMatch(client, /createPortal/, 'overlays must stay inside .dgp-root')
 })
 
 test('the rc.2 surface contract: elevation instead of border plus shadow', () => {
@@ -647,16 +649,16 @@ test('the rc.2 surface contract: elevation instead of border plus shadow', () =>
   // (docs/web-styling.md) — the 0.5px hairline is the first elevation layer.
   // Dialogs take the panel radius; the menu keeps the compact tier (outer R12,
   // 4px padding, R8 rows) from docs/ui-radius.md.
-  for (const selector of ['.dig-menu', '.dig-dialog', '.dig-toast']) {
+  for (const selector of ['.dgp-menu', '.dgp-dialog', '.dgp-toast']) {
     const text = cssRule(selector)
     assert.match(text, /box-shadow:var\(--dsw-elevation-(prominent|panel)/, selector + ' must take a shared elevation')
     assert.doesNotMatch(text, /border:1px solid var\(--dsw-alias-border-/, selector + ' must not pair a neutral border with elevation')
   }
-  assert.match(cssRule('.dig-menu'), /border-radius:var\(--dsw-radius-md,/)
-  assert.match(cssRule('.dig-dialog'), /border-radius:var\(--dsw-radius-panel,/)
+  assert.match(cssRule('.dgp-menu'), /border-radius:var\(--dsw-radius-md,/)
+  assert.match(cssRule('.dgp-dialog'), /border-radius:var\(--dsw-radius-panel,/)
   // Modal masks keep the translucent dark fill and take their blur from the
   // theme (`--dsw-mask-blur` is `none`, so the declaration is a no-op today).
-  assert.match(cssRule('.dig-overlay'), /backdrop-filter:var\(--dsw-mask-blur,/)
+  assert.match(cssRule('.dgp-overlay'), /backdrop-filter:var\(--dsw-mask-blur,/)
 })
 
 test('the rc.2 surface contract: one focus colour, radius tokens, round capsules', () => {
@@ -665,12 +667,12 @@ test('the rc.2 surface contract: one focus colour, radius tokens, round capsules
   // not `:read-write` (ui-theme/src/styles/focus.css), so a component may own its
   // offset and width but never its colour. The old rule used `:focus` with its own
   // colour, which painted a ring on pointer clicks too.
-  assert.match(client, /\.dig-select:focus-visible\{outline:1px solid var\(--dsw-focus-ring-color,/)
-  assert.doesNotMatch(client, /\.dig-select:focus\{outline:/, 'focus feedback must follow the input modality')
+  assert.match(client, /\.dgp-select:focus-visible\{outline:1px solid var\(--dsw-focus-ring-color,/)
+  assert.doesNotMatch(client, /\.dgp-select:focus\{outline:/, 'focus feedback must follow the input modality')
   // Text controls keep their own feedback (the shipped Input.module.css pattern:
   // outline:none plus a focus-within border colour) and use the shared colour.
-  assert.match(client, /\.dig-input:focus\{border-color:var\(--dsw-alias-state-business-primary,/)
-  assert.match(client, /\.dig-textarea:focus\{border-color:var\(--dsw-alias-state-business-primary,/)
+  assert.match(client, /\.dgp-input:focus\{border-color:var\(--dsw-alias-state-business-primary,/)
+  assert.match(client, /\.dgp-textarea:focus\{border-color:var\(--dsw-alias-state-business-primary,/)
 
   const css = client.slice(client.indexOf('const CSS = ['), client.indexOf('].join('))
   // docs/ui-radius.md: consume the named scale instead of local values, except
@@ -698,7 +700,7 @@ test('the rc.2 surface contract: one focus colour, radius tokens, round capsules
 })
 
 test('client half has three doors: better-sidebar, native right sidebar, conversation view tab', () => {
-  assert.match(client, /const TAB_ID = 'dsh-ide-git:panel'/)
+  assert.match(client, /const TAB_ID = 'dsh-git-panel:panel'/)
   assert.match(client, /single: true/)
   // Door 1 — dsh-better-sidebar, waited for through ctx.inject so a host that
   // loads it late still gets the tab (and the bottom workbench with it).
@@ -726,7 +728,7 @@ test('client half has three doors: better-sidebar, native right sidebar, convers
   // rides. ON by default; the row Config's `conversationTab` switch in the
   // settings card drives it live (register/unregister, no reload), and a host
   // without the row Config keeps the tab (no editor surface exists there).
-  assert.match(client, /const CONVERSATION_VIEW_ID = 'ide-git'/)
+  assert.match(client, /const CONVERSATION_VIEW_ID = 'git-panel'/)
   assert.match(client, /const conversationTabEnabled = \(\) => \{/)
   assert.match(client, /return value !== false/, 'an absent or true field means the tab is shown')
   assert.match(client, /slots\.inject\('conversation\.view', \(\) => slots\.register\(/)
@@ -740,7 +742,7 @@ test('client half has three doors: better-sidebar, native right sidebar, convers
   // it is not a start-page destination).
   const nativeTypes = client.match(/tabs\.register\(\{/g) || []
   assert.equal(nativeTypes.length, 2, 'two native tab types: the main panel and the preview tab')
-  assert.match(client, /const NATIVE_PREVIEW_ID = 'dsh-ide-git-preview'/)
+  assert.match(client, /const NATIVE_PREVIEW_ID = 'dsh-git-panel-preview'/)
   assert.match(client, /keepMounted: true/, 'the preview tab keeps its body across tab switches')
   assert.doesNotMatch(client, /NATIVE_PREVIEW_ID,\n\s*kind: NATIVE_PREVIEW_KIND,\n\s*title: \(\) => t\('preview\.title'\),\n\s*keepMounted: true,\n\s*guide:/,
     'the preview tab carries no guide entry (it is not a start-page destination)')
@@ -749,7 +751,7 @@ test('client half has three doors: better-sidebar, native right sidebar, convers
 })
 
 test('host half is an ESM cordis plugin with argv-only git calls', () => {
-  assert.match(host, /export const name = 'dsh-ide-git'/)
+  assert.match(host, /export const name = 'dsh-git-panel'/)
   assert.match(host, /export const inject = \['webServer'\]/)
   assert.match(host, /export function apply\(ctx\)/)
   assert.match(host, /ctx\.webServer\.register\(\{ kind: 'prefix', path: ROUTE_PREFIX/)
@@ -869,7 +871,7 @@ test('the tree toggle is reachable again after it was folded', () => {
   // was OPEN left a folded tree with no way back (a workspace could only be
   // repaired by clearing localStorage). The header button is two-way now, and the
   // rail carries the action for the chromes that have no header button.
-  const bar = client.slice(client.indexOf("className: 'dig-compact-bar'"), client.indexOf("className: 'dig-compact-bar'") + 1400)
+  const bar = client.slice(client.indexOf("className: 'dgp-compact-bar'"), client.indexOf("className: 'dgp-compact-bar'") + 1400)
   assert.match(bar, /'data-action': 'tree'/, 'the compact header keeps a tree control')
   assert.match(bar, /onClick: \(\) => foldTree\(!treeOpen\)/, 'and it toggles BOTH ways')
   assert.match(bar, /'aria-pressed': treeOpen \? 'true' : 'false'/)
@@ -889,7 +891,7 @@ test('the dock actions are wired on the native seat only', () => {
   // Door 2 (the native right-sidebar seat) owns a sidebarRight tab id; door 1
   // (dsh-better-sidebar) does not, and floating a foreign tab id is not a thing.
   assert.match(client, /readDockInfo\(props\.useTabInfo, props\.ctx\)/, 'the native seat reads its own tab identity')
-  const better = client.slice(client.indexOf('betterSidebar.registerTab({'), client.indexOf('dsh-ide-git: Git tab'))
+  const better = client.slice(client.indexOf('betterSidebar.registerTab({'), client.indexOf('dsh-git-panel: Git tab'))
   assert.doesNotMatch(better, /dock:/, 'the better-sidebar door must not wire dock actions')
   assert.match(client, /try \{ info = useTabInfo\(\) \} catch \(error\) \{ void error \}/,
     'the slot reader throws until the tab is committed; a missing answer is a missing button')
@@ -1003,7 +1005,7 @@ function paneCore() {
 }
 
 test('pane sizes are stored per surface under one versioned key', () => {
-  assert.match(client, /const PANES_KEY = 'dsh-ide-git\.panes\.v1'/)
+  assert.match(client, /const PANES_KEY = 'dsh-git-panel\.panes\.v1'/)
   assert.match(client, /localStorage\.getItem\(PANES_KEY\)/, 'reads must go through the versioned key')
   assert.match(client, /localStorage\.setItem\(PANES_KEY, JSON\.stringify\(normalizePanes\(config\)\)\)/,
     'writes must be normalised too, and wrapped in try/catch')
@@ -1107,13 +1109,13 @@ test('the pane clamps hold at both ends and never shrink a pane below its own bo
 })
 
 test('the pane dividers are draggable, touch-safe and keyboard reachable', () => {
-  const gutter = cssRule('.dig-gutter')
+  const gutter = cssRule('.dgp-gutter')
   assert.match(gutter, /touch-action:none/, 'a touch drag must resize the pane, not scroll the panel')
-  assert.match(cssRule('.dig-gutter-v'), /width:8px/, 'the hit area is wider than the hairline it paints')
-  assert.match(cssRule('.dig-gutter-h'), /height:8px/)
-  assert.match(cssRule('.dig-gutter::after'), /var\(--dsw-alias-hairline,/, 'the hairline keeps the theme token')
+  assert.match(cssRule('.dgp-gutter-v'), /width:8px/, 'the hit area is wider than the hairline it paints')
+  assert.match(cssRule('.dgp-gutter-h'), /height:8px/)
+  assert.match(cssRule('.dgp-gutter::after'), /var\(--dsw-alias-hairline,/, 'the hairline keeps the theme token')
   assert.match(client, /setPointerCapture/, 'the drag must survive leaving the hit area')
-  assert.match(client, /\.dig-pane-dragging,\.dig-pane-dragging \*\{user-select:none\}/, 'no text selection while dragging')
+  assert.match(client, /\.dgp-pane-dragging,\.dgp-pane-dragging \*\{user-select:none\}/, 'no text selection while dragging')
   assert.match(client, /onLostPointerCapture/, 'a dropped capture must still finish the gesture')
   // Double-click resets and the arrow keys nudge (Shift = 4x).
   assert.match(client, /onDoubleClick: \(\) => props\.onReset\(\)/)
@@ -1129,7 +1131,7 @@ test('a divider only exists when it can move something', () => {
   // diff pane, so its diff window (fixed max-height:55%) could not be resized
   // at all — user report. Every chrome now hands out a real diff window; the
   // diff keeps measuring HEIGHT even where the chrome runs sideways.
-  assert.match(client, /className: 'dig-diff-pane', 'data-pane': 'diff', style: paneStyle\('diff'\)/,
+  assert.match(client, /className: 'dgp-diff-pane', 'data-pane': 'diff', style: paneStyle\('diff'\)/,
     'the diff pane must actually consume the stored size')
   assert.match(client, /if \(limit === undefined \|\| limit\.max <= limit\.min\) return null/,
     'no pane in this chrome, or no travel in either direction, means no divider element')
@@ -1253,17 +1255,54 @@ test('the settings card folds into collapsible sections, collapsed by default', 
   const card = client.slice(client.indexOf('function RailSettingsCard('), client.indexOf('function RailSettings('))
   assert.match(card, /const \[folds, setFolds\] = useState\(\{\}\)/,
     'the fold state is a hook, declared above every early return')
-  assert.match(card, /className: 'dig-foldHead'/, 'each section header is a real button')
+  assert.match(card, /className: 'dgp-foldHead'/, 'each section header is a real button')
   assert.match(card, /'aria-expanded': open \? 'true' : 'false'/, 'the header announces its state to assistive tech')
-  assert.match(card, /open \? E\('div', \{ className: 'dig-stack' \}, body\) : null/,
+  assert.match(card, /open \? E\('div', \{ className: 'dgp-stack' \}, body\) : null/,
     'a collapsed section renders no body at all')
-  for (const key of ['settings.rail.title', 'settings.placement.title', 'settings.commit.title']) {
+  for (const key of ['settings.rail.title', 'settings.placement.title', 'settings.commit.title', 'settings.list.title']) {
     assert.match(card, new RegExp("fold\\('" + key.replace(/\./g, '\\.') + "'"),
       'the ' + key + ' section header comes from the dictionary')
   }
   const titleOccurrences = client.split("'settings.rail.title'").length - 1
   assert.ok(titleOccurrences >= 22, 'settings.rail.title must ship in ZH + EN + every LOCALES entry (saw ' + titleOccurrences + ')')
-  assert.doesNotMatch(card, /className: 'dig-settings-sub'/,
+  // The list & cache section (row paint cache + scan concurrency): its five
+  // sentences ship in every dictionary, and both row-Config fields are declared
+  // by the host schema with the measured/default values — a client-side field
+  // the host does not declare is rejected by the volatility check.
+  for (const key of ['settings.list.title', 'settings.list.rowCache', 'settings.list.rowCacheHint',
+    'settings.list.scanSlots', 'settings.list.scanSlotsHint']) {
+    const occurrences = client.split("'" + key + "'").length - 1
+    assert.ok(occurrences >= 22, key + ' must ship in ZH + EN + every LOCALES entry (saw ' + occurrences + ')')
+  }
+  // The redesigned toggle cards speak their state (search-free pattern): the
+  // subnote is prefixed with a live "on/off" sentence shipped in every
+  // dictionary, and the card itself no longer looks like the upstream fork —
+  // the checkbox is drawn as a pill switch while staying a real input.
+  for (const key of ['settings.state.on', 'settings.state.off']) {
+    const occurrences = client.split("'" + key + "'").length - 1
+    assert.ok(occurrences >= 22, key + ' must ship in ZH + EN + every LOCALES entry (saw ' + occurrences + ')')
+  }
+  assert.match(client, /\(shown \? t\('settings\.state\.on'\) : t\('settings\.state\.off'\)\) \+ t\(/,
+    'placement and list toggle subnotes carry the live state prefix')
+  assert.match(client, /'settings\.card\.title': 'Git 面板设置'/,
+    'the card title carries this fork’s identity, not the upstream tool-window name')
+  assert.match(client, /appearance:none;-webkit-appearance:none;flex:none;width:36px;height:20px/,
+    'the checkbox is styled as a pill switch (a real input underneath)')
+  assert.match(client, /\.dgp-settings-field\{display:flex;flex-direction:column/,
+    'toggle settings render as search-free-style cards')
+  assert.match(client, /repeat\(auto-fill,minmax\(225px,1fr\)\)/,
+    'the action-rail switches lay out as a responsive grid')
+  // The plugin-list identity (locale meta) is this fork's own, not upstream's.
+  for (const [file, title] of [['locale/zh.json', 'Git 面板'], ['locale/en.json', 'Git Panel']]) {
+    const meta = JSON.parse(readFileSync(new URL('../' + file, import.meta.url), 'utf8'))
+    assert.equal(meta.meta.title, title, file + ' meta.title is the fork’s own name')
+    assert.ok(meta.meta.description.includes('dsh-ide-git'), file + ' meta.description keeps the fork attribution')
+  }
+  assert.match(host, /shape\.rowPaintCache = live\(schema\.boolean\(\)\.default\(true\)\)/,
+    'the host schema declares the cache switch with default true')
+  assert.match(host, /shape\.listScanSlots = live\(schema\.number\(\)\.default\(4\)\)/,
+    'the host schema declares the scan width with the measured default 4')
+  assert.doesNotMatch(card, /className: 'dgp-settings-sub'/,
     'the flat section titles are gone, replaced by fold headers')
 })
 
@@ -1396,7 +1435,7 @@ test('the legacy rail migration lands every field, or does not claim to have run
     }
     const writeRailFields = (ops, form) => { calls.push({ ops: ops, form: form }); return outcome }
     const run = new Function('window', 'RAIL_KEY', 'RAIL_MIGRATED_KEY', 'RAIL_IDS', 'railFieldOf', 'railValuesOfConfig', 'normalizeRail', 'railFormReady', 'writeRailFields', 'console',
-      'let railMigrating = false\n' + source + '\nreturn migrateRailConfig')(window, 'dsh-ide-git.rail.v1', 'dsh-ide-git.rail.v1.migrated',
+      'let railMigrating = false\n' + source + '\nreturn migrateRailConfig')(window, 'dsh-git-panel.rail.v1', 'dsh-git-panel.rail.v1.migrated',
       ['refresh', 'tag', 'push'],
       (id) => 'rail' + id.charAt(0).toUpperCase() + id.slice(1),
       (config) => ({ railRefresh: config.hidden.indexOf('refresh') < 0, railTag: config.hidden.indexOf('tag') < 0, railPush: config.hidden.indexOf('push') < 0 }),
@@ -1408,36 +1447,36 @@ test('the legacy rail migration lands every field, or does not claim to have run
   }
 
   // 1 — every legacy field goes in ONE atomic mutation, and the marker follows the write.
-  const ok = build({ 'dsh-ide-git.rail.v1': JSON.stringify({ order: [], hidden: ['refresh', 'tag'] }) }, { sent: true, settled: Promise.resolve(true) }, { railRefresh: true, railTag: true, railPush: true })
+  const ok = build({ 'dsh-git-panel.rail.v1': JSON.stringify({ order: [], hidden: ['refresh', 'tag'] }) }, { sent: true, settled: Promise.resolve(true) }, { railRefresh: true, railTag: true, railPush: true })
   ok.run(ok.form)
   assert.equal(ok.calls.length, 1, 'the migration submits exactly one write')
   assert.deepEqual(ok.calls[0].ops, [
     { op: 'set', path: ['railRefresh'], value: false },
     { op: 'set', path: ['railTag'], value: false },
   ], 'only the fields that actually differ are submitted, one op each')
-  assert.equal(ok.storage['dsh-ide-git.rail.v1.migrated'], undefined, 'the marker must not be stamped before the Host answers')
+  assert.equal(ok.storage['dsh-git-panel.rail.v1.migrated'], undefined, 'the marker must not be stamped before the Host answers')
   await new Promise((resolve) => setTimeout(resolve, 0))
-  assert.equal(ok.storage['dsh-ide-git.rail.v1.migrated'], '1', 'the marker is stamped once the write was accepted')
+  assert.equal(ok.storage['dsh-git-panel.rail.v1.migrated'], '1', 'the marker is stamped once the write was accepted')
 
   // 2 — a refused write leaves the migration unmarked, and the next load retries.
-  const refused = build({ 'dsh-ide-git.rail.v1': JSON.stringify({ order: [], hidden: ['push'] }) }, { sent: true, settled: Promise.resolve(false) }, {})
+  const refused = build({ 'dsh-git-panel.rail.v1': JSON.stringify({ order: [], hidden: ['push'] }) }, { sent: true, settled: Promise.resolve(false) }, {})
   refused.run(refused.form)
   await new Promise((resolve) => setTimeout(resolve, 0))
-  assert.equal(refused.storage['dsh-ide-git.rail.v1.migrated'], undefined, 'a refused write must not be marked as migrated')
+  assert.equal(refused.storage['dsh-git-panel.rail.v1.migrated'], undefined, 'a refused write must not be marked as migrated')
   refused.run(refused.form)
   assert.equal(refused.calls.length, 2, 'the next load retries the migration')
-  const notReady = build({ 'dsh-ide-git.rail.v1': JSON.stringify({ order: [], hidden: ['push'] }) }, { sent: false, reason: 'read-only' }, {})
+  const notReady = build({ 'dsh-git-panel.rail.v1': JSON.stringify({ order: [], hidden: ['push'] }) }, { sent: false, reason: 'read-only' }, {})
   notReady.run(notReady.form)
-  assert.equal(notReady.storage['dsh-ide-git.rail.v1.migrated'], undefined, 'an unwritable document must not be marked as migrated')
+  assert.equal(notReady.storage['dsh-git-panel.rail.v1.migrated'], undefined, 'an unwritable document must not be marked as migrated')
 
   // 3 — once migrated, it never runs twice, and a config that already agrees is a no-op.
-  const already = build({ 'dsh-ide-git.rail.v1': JSON.stringify({ order: [], hidden: ['push'] }), 'dsh-ide-git.rail.v1.migrated': '1' }, { sent: true, settled: Promise.resolve(true) }, {})
+  const already = build({ 'dsh-git-panel.rail.v1': JSON.stringify({ order: [], hidden: ['push'] }), 'dsh-git-panel.rail.v1.migrated': '1' }, { sent: true, settled: Promise.resolve(true) }, {})
   already.run(already.form)
   assert.equal(already.calls.length, 0, 'a migrated profile is not migrated again')
-  const same = build({ 'dsh-ide-git.rail.v1': JSON.stringify({ order: [], hidden: [] }) }, { sent: true, settled: Promise.resolve(true) }, { railRefresh: true, railTag: true, railPush: true })
+  const same = build({ 'dsh-git-panel.rail.v1': JSON.stringify({ order: [], hidden: [] }) }, { sent: true, settled: Promise.resolve(true) }, { railRefresh: true, railTag: true, railPush: true })
   same.run(same.form)
   assert.equal(same.calls.length, 0, 'a document that already matches is not rewritten')
-  assert.equal(same.storage['dsh-ide-git.rail.v1.migrated'], '1', 'and it still counts as migrated')
+  assert.equal(same.storage['dsh-git-panel.rail.v1.migrated'], '1', 'and it still counts as migrated')
 })
 
 test('the overwrite-draft confirmation carries both button labels in every dictionary', () => {
@@ -1509,13 +1548,13 @@ test('the rail settings live in the row Config, with localStorage only as the le
 
   // Client wiring: the detail-page seat (the legacy Settings → Plugins seat went
   // away with the raised host floor), soft services, one-shot migration.
-  assert.match(client, /const SETTINGS_BUNDLE = 'dsh-ide-git'/)
-  assert.match(client, /const RAIL_NS = 'ide-git'/)
+  assert.match(client, /const SETTINGS_BUNDLE = 'dsh-git-panel'/)
+  assert.match(client, /const RAIL_NS = 'git-panel'/)
   assert.match(client, /slots\.inject\('plugins\.bundle\.config'/)
   assert.match(client, /\{ name: 'plugins\.bundle\.config', key: SETTINGS_BUNDLE, locale: LOCALE_NS \}/)
   assert.doesNotMatch(client, /settings\.plugin\.item/, 'the legacy settings-list seat must stay gone')
   assert.match(client, /ctx\.inject\(\['configForms'\]/)
-  assert.match(client, /const RAIL_MIGRATED_KEY = 'dsh-ide-git\.rail\.v1\.migrated'/)
+  assert.match(client, /const RAIL_MIGRATED_KEY = 'dsh-git-panel\.rail\.v1\.migrated'/)
   assert.match(client, /navigation\.openBundle\(SETTINGS_BUNDLE\)/, 'the gear opens the plugin page when the host has one')
   assert.match(client, /const openSettings = navigation !== undefined && navigation !== null && typeof navigation\.openBundle === 'function'/,
     'pluginNavigation is read at RENDER time and soft (it may be undefined)')
@@ -1529,19 +1568,19 @@ test('every overlay is clamped to the panel it lives in', () => {
   // narrower than the overlays' own minimum, and a fixed min-width BEATS max-width
   // in CSS — so the context menu came out wider than the panel and hung past its
   // right edge. Invariant 13 is about the panel's box, not just its origin.
-  assert.match(cssRule('.dig-menu'), /box-sizing:border-box/)
-  assert.match(cssRule('.dig-menu'), /min-width:200px/, 'the menu keeps a readable floor; the panel cap lives on .dig-menu-wrap')
-  assert.match(cssRule('.dig-menu-wrap'), /max-width:calc\(100% - 8px\)/, 'the panel cap moved to the wrapper')
-  assert.match(cssRule('.dig-dialog'), /box-sizing:border-box/, 'a content-box dialog adds its padding on top of the clamp')
-  assert.match(cssRule('.dig-dialog'), /min-width:min\(240px,100%\)/)
-  assert.match(cssRule('.dig-dialog'), /max-width:min\(420px,94%\)/)
-  assert.match(cssRule('.dig-dialog-wide'), /min-width:min\(360px,92%\)/)
-  assert.match(cssRule('.dig-toasts'), /max-width:min\(340px,92%\)/)
+  assert.match(cssRule('.dgp-menu'), /box-sizing:border-box/)
+  assert.match(cssRule('.dgp-menu'), /min-width:200px/, 'the menu keeps a readable floor; the panel cap lives on .dgp-menu-wrap')
+  assert.match(cssRule('.dgp-menu-wrap'), /max-width:calc\(100% - 8px\)/, 'the panel cap moved to the wrapper')
+  assert.match(cssRule('.dgp-dialog'), /box-sizing:border-box/, 'a content-box dialog adds its padding on top of the clamp')
+  assert.match(cssRule('.dgp-dialog'), /min-width:min\(240px,100%\)/)
+  assert.match(cssRule('.dgp-dialog'), /max-width:min\(420px,94%\)/)
+  assert.match(cssRule('.dgp-dialog-wide'), /min-width:min\(360px,92%\)/)
+  assert.match(cssRule('.dgp-toasts'), /max-width:min\(340px,92%\)/)
   // Under the compact threshold the panel marks itself, and the nowrap labels that
   // would otherwise be clipped start wrapping inside the clamped box.
-  assert.match(client, /compact \? ' dig-root-narrow' : ''/)
-  assert.match(client, /\.dig-root-narrow \.dig-menu-item\{white-space:normal\}/)
-  assert.match(client, /\.dig-root-narrow \.dig-toast-text\{white-space:normal\}/)
+  assert.match(client, /compact \? ' dgp-root-narrow' : ''/)
+  assert.match(client, /\.dgp-root-narrow \.dgp-menu-item\{white-space:normal\}/)
+  assert.match(client, /\.dgp-root-narrow \.dgp-toast-text\{white-space:normal\}/)
 })
 
 test('every pane name a divider announces exists in every dictionary', () => {  const mapped = client.match(/const PANE_NAME_KEYS = \{([^}]*)\}/)
@@ -1597,27 +1636,92 @@ test('the first-paint cache seeds session switches inside one workspace (v0.13.1
   assert.equal(helpers.readPaintRoot('/w'), '/r', 'the last looked-at root survives the switch')
   // The seeding effect only fills COLD state (null summary / empty commits) and
   // never rolls live state back to the stale snapshot.
-  const panel = client.slice(client.indexOf('const cachedPage = readPaintPage(repoRoot)'), client.indexOf('void refresh()'))
+  const seedStart = client.indexOf('const cachedPage = readPaintPage(repoRoot)')
+  const panel = client.slice(seedStart, client.indexOf('void refresh()', seedStart))
   assert.match(panel, /if \(summary === null\) setSummary\(/, 'summary only seeds when cold')
   assert.match(panel, /if \(branches === null\) setBranches\(/, 'branches only seed when cold')
   assert.match(panel, /if \(commits\.length === 0\) \{ setCommits\(/, 'commits only seed when cold')
   // The write side records exactly the FIRST page, from refresh() itself — a
   // paged fetch (skip > 0) must never poison the seed with a concatenated list.
-  const refreshFn = client.slice(client.indexOf('const refresh = useCallback'), client.indexOf('], [guard, loadSummary, loadBranches, loadCommits, repoRoot])'))
+  const refreshStart = client.indexOf('const refresh = useCallback', client.indexOf('function Panel(props)'))
+  const refreshFn = client.slice(refreshStart, client.indexOf('}, [guard, loadSummary, loadBranches, loadCommits, repoRoot, base])', refreshStart))
   assert.match(refreshFn, /loadCommits\(0\)/, 'the cache write rides the first-page refresh')
   assert.match(refreshFn, /writePaintPage\(repoRoot,/, 'refresh writes the cache')
+})
+
+test('row summaries persist in localStorage and seed cold rows (row paint cache)', () => {
+  // The list re-ran every row scan on a fresh app start: the sessionStorage
+  // paint seeds die with the tab, so re-entering the panel painted a wall of
+  // '…' until each scan crawled back. The row cache is the LIST counterpart of
+  // the page seed — same no-expiry trade (the mount refresh re-proves every
+  // field), LRU over writes, malformed payloads degrade to "no seed".
+  const core = client.slice(
+    client.indexOf('/* ---- persistent row summaries'),
+    client.indexOf('/* ============================== storage'))
+  assert.ok(core.length > 300, 'the row-summary cache block must exist')
+  assert.match(core, /'dsh-git-panel\.rows\.v1'/, 'the store lives under the plugin namespace')
+  const helpers = new Function('Date', core
+    + '\nreturn { readPaintRowSummary, writePaintRowSummary }')({ now: () => 1_000 })
+  const summary = { branch: 'main', changes: { staged: [], unstaged: [], untracked: [], conflicted: [], ignored: [], ignoredTruncated: false } }
+  helpers.writePaintRowSummary('/r', summary)
+  assert.equal(helpers.readPaintRowSummary('/r'), summary, 'a written summary reads back by identity')
+  assert.equal(helpers.readPaintRowSummary('/missing'), undefined, 'an unknown root is a miss')
+  helpers.writePaintRowSummary('/r', { branch: 7, changes: {} })
+  assert.equal(helpers.readPaintRowSummary('/r'), summary, 'a malformed write is ignored, the good seed survives')
+  helpers.writePaintRowSummary('/r', { branch: 'main', changes: { staged: [] } })
+  assert.equal(helpers.readPaintRowSummary('/r'), summary, 'a partial changes object is rejected — the body iterates all four groups')
+  // LRU over writes: the rows that keep polling are exactly the ones kept.
+  for (let index = 0; index < 20; index += 1) helpers.writePaintRowSummary('/r' + index, summary)
+  assert.equal(helpers.readPaintRowSummary('/r'), undefined, 'the oldest row is evicted past the cap')
+  assert.equal(helpers.readPaintRowSummary('/r19'), summary, 'the newest row survives the cap')
+  // The seed only fills COLD state: the initial useState — never a rollback of
+  // live state (the guarded refresh remains the only writer afterwards). The
+  // miss converts to null, the component's cold-state sentinel, and the row
+  // Config switch (default ON) gates both directions.
+  assert.match(client, /useState\(\(\) => \(rowPaintCacheEnabled\(\) === true \? \(readPaintRowSummary\(repo\.path\) \?\? null\) : null\)\)/,
+    'rows seed their summary in the initial state, miss as null, behind the switch')
+  assert.match(client, /if \(rowPaintCacheEnabled\(\) === true\) writePaintRowSummary\(repo\.path, data\)/,
+    'every completed scan refreshes the cache, behind the switch')
+  assert.match(client, /repositoryScans < repositoryScanSlots\(\)/, 'the scan pool reads the row-Config width, not a bare number')
+})
+
+test('status auto-update rides the row Config; the list scans once per open (strategy)', () => {
+  // The strategy (v0.1.2): STATUS auto-updates (poll cadence + focus wake,
+  // both configurable), while the repository LIST — the slowest scan, and one
+  // that barely changes — refreshes once per open and on the manual button
+  // only, never from a poll or a wake.
+  assert.match(host, /shape\.autoRefreshMs = live\(schema\.number\(\)\.default\(12000\)\)/,
+    'the host schema declares the poll cadence with the historical default')
+  assert.match(host, /shape\.refreshOnFocus = live\(schema\.boolean\(\)\.default\(true\)\)/,
+    'the host schema declares the wake switch with default true')
+  assert.match(client, /function autoRefreshMs\(\)/, 'the cadence reads the row Config')
+  assert.match(client, /Math\.max\(0, Math\.min\(600000, Math\.round\(raw\)\)\)/,
+    '0 disables polling outright, and a stray config value stays bounded')
+  assert.match(client, /function refreshOnFocusEnabled\(\)/, 'the wake switch reads the row Config')
+  assert.match(client, /if \(document\.visibilityState !== 'visible'\) return/, 'a hidden document skips poll and wake ticks')
+  assert.match(client, /props\.autoRefreshMs/, 'rows take their cadence from the panel')
+  assert.match(client, /refreshTick: tick \+ focusTick/, 'the wake tick drives the rows through the existing refresh prop')
+  assert.match(client, /window\.addEventListener\('focus', wake\)/, 'the wake listens on focus as well as visibility')
+  assert.match(client, /subscribeRailConfig\(\(\) => \{ setPollMs\(autoRefreshMs\(\)\) \}\)/,
+    'a cadence change in the settings card applies without a reload')
+  assert.doesNotMatch(client, /AUTO_REFRESH_MS/, 'no bare cadence constant survives — every timer reads the config')
+  // The list scope: exactly ONE discovery call site, mounted on the open-keyed
+  // effect ([cwd, sessionId, tick] — tick is the manual button only). A second
+  // call site anywhere would be a poll or a wake scanning the slow list.
+  assert.equal(client.split("request('repos'").length - 1, 1, 'exactly one discovery call site in the client')
+  assert.match(client, /\}, \[cwd, sessionId, tick\]\)/, 'discovery re-runs only on open (cwd/session) or the manual tick')
 })
 
 test('block separators paint on border-l2, not the hairline token (v0.13.1 style)', () => {
   // The pane/block separators used the faintest token; users could not see the
   // block structure. These eleven are the BLOCK borders; dialog innards and
   // menu separators deliberately keep the hairline.
-  for (const selector of ['.dig-topbar', '.dig-rail', '.dig-rail-row', '.dig-pane-tree', '.dig-pane-tree-stack',
-    '.dig-pane-changes', '.dig-pane-changes-stack', '.dig-compact-tree', '.dig-filters', '.dig-commit-box', '.dig-diff-pane']) {
+  for (const selector of ['.dgp-topbar', '.dgp-rail', '.dgp-rail-row', '.dgp-pane-tree', '.dgp-pane-tree-stack',
+    '.dgp-pane-changes', '.dgp-pane-changes-stack', '.dgp-compact-tree', '.dgp-filters', '.dgp-commit-box', '.dgp-diff-pane']) {
     const rule = cssRule(selector)
     assert.match(rule, /var\(--dsw-alias-border-l2\)/, selector + ' must draw its block border on border-l2')
   }
-  for (const selector of ['.dig-settings-list', '.dig-menu-sep']) {
+  for (const selector of ['.dgp-settings-list', '.dgp-menu-sep']) {
     const rule = cssRule(selector)
     assert.doesNotMatch(rule, /border-l2/, selector + ' stays on the hairline (not a block)')
   }

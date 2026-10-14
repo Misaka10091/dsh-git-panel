@@ -1,5 +1,5 @@
 /**
- * dsh-ide-git — client half (plain JavaScript, no build step).
+ * dsh-git-panel — client half (plain JavaScript, no build step).
  *
  * Registers ONE dsh-better-sidebar tab: an IDE-style Git tool window.
  *
@@ -17,7 +17,7 @@
  * exactly like better-sidebar's own panels do.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-ide-git',
+  id: 'dsh-git-panel',
   factory: (require) => {
     const React = require('react')
     const E = React.createElement
@@ -51,26 +51,25 @@ window.__ModuleLoader__.load({
        shell with <base href="./">, so document.baseURI is the mount the page
        was loaded from — the origin root, or a prefix-stripping proxy's sub-path
        (issue #4). fetch() resolves this relative path against the document
-       base, so the panel's calls land on /dsh-ide-git/api at the origin root
-       and on <mount>/dsh-ide-git/api under a sub-path, both matching the route
+       base, so the panel's calls land on /dsh-git-panel/api at the origin root
+       and on <mount>/dsh-git-panel/api under a sub-path, both matching the route
        the host half registered at its upstream path. An origin-absolute base
        would escape the mount and 404 behind any strict proxy. */
-    const API_BASE = 'dsh-ide-git/api'
-    const TAB_ID = 'dsh-ide-git:panel'
+    const API_BASE = 'dsh-git-panel/api'
+    const TAB_ID = 'dsh-git-panel:panel'
     /* The bundle's package name: the key the Plugins page uses for a bundle's own
        page and its `plugins.bundle.config` slot. */
-    const SETTINGS_BUNDLE = 'dsh-ide-git'
+    const SETTINGS_BUNDLE = 'dsh-git-panel'
     /* The namespace this plugin's dictionaries are published under in the DSH
        locale registry. */
-    const LOCALE_NS = 'dsh-ide-git'
+    const LOCALE_NS = 'dsh-git-panel'
     const LANE_WIDTH = 14
     /* Hard cap on the drawn lane columns. Lanes beyond the cap collapse into
        the last column: without the cap a branchy repository pushed the graph
        wider than the panel and shoved the subject column out of view. */
     const GRAPH_MAX_LANES = 7
     const LANE_COLORS = ['#4d6bfe', '#e2a03f', '#3fb950', '#d2679b', '#59b0d6', '#b083f0', '#d2694a', '#8a9aa8']
-    const AUTO_REFRESH_MS = 12000
-    const REPO_KEY = 'dsh-ide-git.repo.v1'
+    const REPO_KEY = 'dsh-git-panel.repo.v1'
     const COMPACT_MAX_WIDTH = 400
     /* Branch rows sit one step right of their SECTION header, and each namespace
        folder adds another step. Without the base step the rows started at 8px —
@@ -278,13 +277,26 @@ window.__ModuleLoader__.load({
       'rail.more': '更多操作',
       'rail.settings': '动作条设置',
       'rail.openSettings': '打开插件设置',
-      'settings.card.title': 'Git 工具窗口设置',
-      'settings.card.desc': '面板放置、动作条按钮与 AI 提交信息',
+      'settings.card.title': 'Git 面板设置',
+      'settings.card.desc': '面板放置、动作条按钮、AI 提交信息、列表缓存与状态刷新',
       'settings.placement.title': '面板放置',
       'settings.placement.tab': '在主对话区显示 Git 标签页',
       'settings.placement.tabHint': '关闭后仍可从右侧栏或底部面板打开。',
       'settings.placement.immersive': '沉浸模式(占满全高,隐藏输入框)',
       'settings.placement.immersiveHint': '开启后 Git 标签页占满整个会话区高度,输入框自动收起;审批与提问仍会正常显示。',
+      'settings.list.title': '列表与缓存',
+      'settings.list.rowCache': '记住仓库列表状态(本地缓存)',
+      'settings.list.rowCacheHint': '进入面板立即显示上次的分支与变更数,后台自动刷新;关闭后每次进入都重新读取。',
+      'settings.list.scanSlots': '仓库扫描并发数',
+      'settings.list.scanSlotsHint': '同时扫描的仓库数上限,实测 4 最快;磁盘较慢时调大可能更慢。',
+      'settings.list.autoRefresh': '自动刷新状态',
+      'settings.list.autoRefreshHint': '按固定间隔读取仓库状态;0 或关闭表示不自动刷新。面板不可见或最小化时暂停。',
+      'settings.list.autoRefreshOff': '关闭',
+      'settings.list.autoRefreshEvery': '每 {n} 秒',
+      'settings.list.refreshOnFocus': '回到面板时立即刷新',
+      'settings.list.refreshOnFocusHint': '窗口重新可见或聚焦后马上读取一轮状态(不重扫仓库列表)。',
+      'settings.state.on': '已开启：',
+      'settings.state.off': '已关闭：',
       'preview.openFile': '打开文件预览',
       'lf.added': '+{count}',
       'lf.deleted': '-{count}',
@@ -586,13 +598,26 @@ window.__ModuleLoader__.load({
       'rail.more': 'More actions',
       'rail.settings': 'Action bar settings',
       'rail.openSettings': 'Open plugin settings',
-      'settings.card.title': 'Git tool window settings',
-      'settings.card.desc': 'Placement, action rail buttons and AI commit message',
+      'settings.card.title': 'Git panel settings',
+      'settings.card.desc': 'Placement, action rail, AI commit message, list cache and status refresh',
       'settings.placement.title': 'Placement',
       'settings.placement.tab': 'Show the Git tab in the conversation area',
       'settings.placement.tabHint': 'Off, the panel stays reachable from the right sidebar and the bottom panel.',
       'settings.placement.immersive': 'Immersive mode (full height, hidden composer)',
       'settings.placement.immersiveHint': 'On, the Git tab fills the whole conversation area and the composer steps aside; approvals and questions still show.',
+      'settings.list.title': 'List & cache',
+      'settings.list.rowCache': 'Remember repository list state (local cache)',
+      'settings.list.rowCacheHint': 'The panel paints the last known branch and change counts immediately, then refreshes in the background; off, every visit re-reads them.',
+      'settings.list.scanSlots': 'Repository scan concurrency',
+      'settings.list.scanSlotsHint': 'How many repositories scan at once. 4 measured fastest; higher can be slower on slow disks.',
+      'settings.list.autoRefresh': 'Auto-refresh status',
+      'settings.list.autoRefreshHint': 'Reads repository status on a fixed interval; 0 or off disables it. Paused while the panel is not visible or the window is minimized.',
+      'settings.list.autoRefreshOff': 'Off',
+      'settings.list.autoRefreshEvery': 'Every {n} s',
+      'settings.list.refreshOnFocus': 'Refresh as soon as the panel regains focus',
+      'settings.list.refreshOnFocusHint': 'Returning to the window reads one round of status right away (without rescanning the repository list).',
+      'settings.state.on': 'On: ',
+      'settings.state.off': 'Off: ',
       'preview.openFile': 'Open in the file preview',
       'lf.added': '+{count}',
       'lf.deleted': '-{count}',
@@ -902,13 +927,26 @@ window.__ModuleLoader__.load({
         'rail.more': '更多操作',
         'rail.settings': '動作列設定',
         'rail.openSettings': '開啟外掛設定',
-        'settings.card.title': 'Git 工具視窗設定',
-        'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
+        'settings.card.title': 'Git 面板設定',
+        'settings.card.desc': '面板放置、動作條按鈕、AI 提交訊息、列表快取與狀態重新整理',
         'settings.placement.title': '面板放置',
         'settings.placement.tab': '喺主對話區顯示 Git 分頁',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
+      'settings.list.title': '列表與快取',
+      'settings.list.rowCache': '記住倉庫列表狀態(本地快取)',
+      'settings.list.rowCacheHint': '進入面板即時顯示上次的分支與變更數,背景自動重新整理;關閉後每次進入都重新讀取。',
+      'settings.list.scanSlots': '倉庫掃描並發數',
+      'settings.list.scanSlotsHint': '同時掃描的倉庫數上限,實測 4 最快;磁碟較慢時調大可能更慢。',
+      'settings.list.autoRefresh': '自動重新整理狀態',
+      'settings.list.autoRefreshHint': '以固定間隔讀取倉庫狀態;0 或關閉表示不自動重新整理。面板不可見或視窗最小化時暫停。',
+      'settings.list.autoRefreshOff': '關閉',
+      'settings.list.autoRefreshEvery': '每 {n} 秒',
+      'settings.list.refreshOnFocus': '回到面板時立即重新整理',
+      'settings.list.refreshOnFocusHint': '視窗重新可見或聚焦後馬上讀取一輪狀態(不重掃倉庫列表)。',
+      'settings.state.on': '已開啟：',
+      'settings.state.off': '已關閉：',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1210,13 +1248,26 @@ window.__ModuleLoader__.load({
         'rail.more': '更多操作',
         'rail.settings': '動作列設定',
         'rail.openSettings': '開啟外掛設定',
-        'settings.card.title': 'Git 工具視窗設定',
-        'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
+        'settings.card.title': 'Git 面板設定',
+        'settings.card.desc': '面板放置、動作列按鈕、AI 提交訊息、清單快取與狀態重新整理',
         'settings.placement.title': '面板放置',
         'settings.placement.tab': '在主對話區顯示 Git 分頁',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個對話區高度,輸入框自動收起;審核與提問仍會正常顯示。',
+      'settings.list.title': '列表與快取',
+      'settings.list.rowCache': '記住儲存庫列表狀態(本機快取)',
+      'settings.list.rowCacheHint': '進入面板立即顯示上次的分支與變更數,背景自動重新整理;關閉後每次進入都重新讀取。',
+      'settings.list.scanSlots': '儲存庫掃描並行數',
+      'settings.list.scanSlotsHint': '同時掃描的儲存庫數上限,實測 4 最快;磁碟較慢時調大可能更慢。',
+      'settings.list.autoRefresh': '自動重新整理狀態',
+      'settings.list.autoRefreshHint': '以固定間隔讀取儲存庫狀態;0 或關閉表示不自動重新整理。面板不可見或視窗最小化時暫停。',
+      'settings.list.autoRefreshOff': '關閉',
+      'settings.list.autoRefreshEvery': '每 {n} 秒',
+      'settings.list.refreshOnFocus': '回到面板時立即重新整理',
+      'settings.list.refreshOnFocusHint': '視窗重新可見或取得焦點後立即讀取一輪狀態(不重掃儲存庫清單)。',
+      'settings.state.on': '已開啟：',
+      'settings.state.off': '已關閉：',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1518,13 +1569,26 @@ window.__ModuleLoader__.load({
         'rail.more': '更多操作',
         'rail.settings': '動作列設定',
         'rail.openSettings': '開啟外掛設定',
-        'settings.card.title': 'Git 工具視窗設定',
-        'settings.card.desc': '面板放置、動作列按鈕與 AI 提交訊息',
+        'settings.card.title': 'Git 面板設定',
+        'settings.card.desc': '面板放置、動作條按鈕、AI 提交訊息、列表快取與狀態重新整理',
         'settings.placement.title': '面板放置',
         'settings.placement.tab': '喺主對話區顯示 Git 分頁',
         'settings.placement.tabHint': '關閉之後仍可從右側欄或底部面板開啟。',
         'settings.placement.immersive': '沉浸模式(佔滿全高,隱藏輸入框)',
         'settings.placement.immersiveHint': '開啟之後 Git 分頁會佔滿整個會話區高度,輸入框自動收起;審批與提問仍會正常顯示。',
+      'settings.list.title': '列表與快取',
+      'settings.list.rowCache': '記住倉庫列表狀態(本地快取)',
+      'settings.list.rowCacheHint': '進入面板即時顯示上次的分支與變更數,背景自動整理;關閉後每次進入都重新讀取。',
+      'settings.list.scanSlots': '倉庫掃描並發數',
+      'settings.list.scanSlotsHint': '同時掃描的倉庫數上限,實測 4 最快;磁碟較慢時調大可能更慢。',
+      'settings.list.autoRefresh': '自動重新整理狀態',
+      'settings.list.autoRefreshHint': '以固定間隔讀取倉庫狀態;0 或關閉表示不自動重新整理。面板不可見或視窗最小化時暫停。',
+      'settings.list.autoRefreshOff': '關閉',
+      'settings.list.autoRefreshEvery': '每 {n} 秒',
+      'settings.list.refreshOnFocus': '回到面板時立即重新整理',
+      'settings.list.refreshOnFocusHint': '視窗重新可見或聚焦後馬上讀取一輪狀態(不重掃倉庫列表)。',
+      'settings.state.on': '已開啟：',
+      'settings.state.off': '已關閉：',
         'preview.openFile': '開啟檔案預覽',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -1826,13 +1890,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'その他の操作',
         'rail.settings': 'アクションバーの設定',
         'rail.openSettings': 'プラグイン設定を開く',
-        'settings.card.title': 'Gitツールウィンドウの設定',
-        'settings.card.desc': 'パネル配置、アクションレールのボタンと AI コミットメッセージ',
+        'settings.card.title': 'Git パネル設定',
+        'settings.card.desc': '配置、アクションバー、AI コミットメッセージ、リストキャッシュと状態更新',
         'settings.placement.title': 'パネル配置',
         'settings.placement.tab': '会話エリアに Git タブを表示',
         'settings.placement.tabHint': 'オフにしても右サイドバーと下部パネルから開けます。',
         'settings.placement.immersive': '没入モード(全高表示・入力欄を非表示)',
         'settings.placement.immersiveHint': 'オンにすると Git タブが会話エリアの高さいっぱいに広がり、入力欄は引っ込みます。承認や質問は通常どおり表示されます。',
+      'settings.list.title': 'リストとキャッシュ',
+      'settings.list.rowCache': 'リポジトリ一覧の状態を記憶(ローカルキャッシュ)',
+      'settings.list.rowCacheHint': 'パネルを開くと前回のブランチと変更数をすぐ表示し、背景で自動更新します。オフにすると毎回再取得します。',
+      'settings.list.scanSlots': 'リポジトリ走査の同時実行数',
+      'settings.list.scanSlotsHint': '同時に走査するリポジトリ数の上限。実測では 4 が最速。遅いディスクでは大きくすると逆に遅くなることがあります。',
+      'settings.list.autoRefresh': 'ステータスの自動更新',
+      'settings.list.autoRefreshHint': '固定間隔でリポジトリの状態を取得します。0 またはオフで自動更新しません。パネルが非表示や最小化の間は一時停止します。',
+      'settings.list.autoRefreshOff': 'オフ',
+      'settings.list.autoRefreshEvery': '{n} 秒ごと',
+      'settings.list.refreshOnFocus': 'パネルに戻ったら即時更新',
+      'settings.list.refreshOnFocusHint': 'ウィンドウが再び表示・フォーカスされた時点で状態を1回取得します(リポジトリ一覧は再走査しません)。',
+      'settings.state.on': 'オン：',
+      'settings.state.off': 'オフ：',
         'preview.openFile': 'ファイルプレビューを開く',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2134,13 +2211,26 @@ window.__ModuleLoader__.load({
         'rail.more': '추가 작업',
         'rail.settings': '작업 표시줄 설정',
         'rail.openSettings': '플러그인 설정 열기',
-        'settings.card.title': 'Git 도구 창 설정',
-        'settings.card.desc': '패널 배치, 액션 레일 버튼 및 AI 커밋 메시지',
+        'settings.card.title': 'Git 패널 설정',
+        'settings.card.desc': '배치, 액션 바, AI 커밋 메시지, 목록 캐시 및 상태 새로 고침',
         'settings.placement.title': '패널 배치',
         'settings.placement.tab': '대화 영역에 Git 탭 표시',
         'settings.placement.tabHint': '꺼도 오른쪽 사이드바와 하단 패널에서 열 수 있습니다.',
         'settings.placement.immersive': '몰입 모드(전체 높이, 입력창 숨김)',
         'settings.placement.immersiveHint': '켜면 Git 탭이 대화 영역 전체 높이를 차지하고 입력창은 숨겨집니다. 승인과 질문은 정상적으로 표시됩니다.',
+      'settings.list.title': '목록 및 캐시',
+      'settings.list.rowCache': '저장소 목록 상태 기억(로컬 캐시)',
+      'settings.list.rowCacheHint': '패널을 열면 마지막 브랜치와 변경 수를 즉시 표시하고 백그라운드에서 자동 갱신합니다. 끄면 매번 다시 읽습니다.',
+      'settings.list.scanSlots': '저장소 스캔 동시 실행 수',
+      'settings.list.scanSlotsHint': '동시에 스캔하는 저장소 수 상한입니다. 실측에서는 4가 가장 빠르며, 느린 디스크에서는 크게 할수록 오히려 느려질 수 있습니다.',
+      'settings.list.autoRefresh': '상태 자동 새로 고침',
+      'settings.list.autoRefreshHint': '일정한 간격으로 저장소 상태를 읽습니다. 0 또는 끄기는 자동 새로 고침을 하지 않습니다. 패널이 보이지 않거나 최소화되면 일시 중지합니다.',
+      'settings.list.autoRefreshOff': '끄기',
+      'settings.list.autoRefreshEvery': '{n}초마다',
+      'settings.list.refreshOnFocus': '패널로 돌아오면 즉시 새로 고침',
+      'settings.list.refreshOnFocusHint': '창이 다시 보이거나 포커스를 받으면 상태를 한 번 읽습니다(저장소 목록은 다시 훑지 않음).',
+      'settings.state.on': '켜짐: ',
+      'settings.state.off': '꺼짐: ',
         'preview.openFile': '파일 미리보기로 열기',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2442,13 +2532,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Weitere Aktionen',
         'rail.settings': 'Einstellungen der Aktionsleiste',
         'rail.openSettings': 'Plugin-Einstellungen öffnen',
-        'settings.card.title': 'Git-Werkzeugfenster-Einstellungen',
-        'settings.card.desc': 'Panel-Platzierung, Aktionsleisten-Schaltflächen und KI-Commit-Nachricht',
+        'settings.card.title': 'Git-Panel-Einstellungen',
+        'settings.card.desc': 'Platzierung, Aktionsleiste, AI-Commit-Nachricht, Listen-Cache und Statusaktualisierung',
         'settings.placement.title': 'Panel-Platzierung',
         'settings.placement.tab': 'Git-Tab im Gesprächsbereich anzeigen',
         'settings.placement.tabHint': 'Ausgeschaltet bleibt das Panel über rechte Seitenleiste und unteres Panel erreichbar.',
         'settings.placement.immersive': 'Immersiver Modus (volle Höhe, ausgeblendetes Eingabefeld)',
         'settings.placement.immersiveHint': 'Eingeschaltet füllt der Git-Tab die gesamte Gesprächshöhe und das Eingabefeld weicht zurück; Freigaben und Rückfragen bleiben sichtbar.',
+      'settings.list.title': 'Liste & Cache',
+      'settings.list.rowCache': 'Repository-Liste merken (lokaler Cache)',
+      'settings.list.rowCacheHint': 'Beim Öffnen erscheinen der letzte Zweig und die Änderungszahlen sofort und werden im Hintergrund aktualisiert; ausgeschaltet wird bei jedem Besuch neu gelesen.',
+      'settings.list.scanSlots': 'Parallelität des Repository-Scans',
+      'settings.list.scanSlotsHint': 'Wie viele Repositories gleichzeitig gescannt werden. 4 war im Test am schnellsten; bei langsamen Festplatten kann mehr langsamer sein.',
+      'settings.list.autoRefresh': 'Status automatisch aktualisieren',
+      'settings.list.autoRefreshHint': 'Liest den Repository-Status in festen Abständen; 0 oder aus schaltet es ab. Pausiert, wenn das Panel nicht sichtbar oder das Fenster minimiert ist.',
+      'settings.list.autoRefreshOff': 'Aus',
+      'settings.list.autoRefreshEvery': 'Alle {n} s',
+      'settings.list.refreshOnFocus': 'Beim Zurückkehren ins Panel sofort aktualisieren',
+      'settings.list.refreshOnFocusHint': 'Sobald das Fenster wieder sichtbar ist oder den Fokus erhält, wird sofort eine Runde Status gelesen (die Repository-Liste wird nicht neu gescannt).',
+      'settings.state.on': 'Aktiv: ',
+      'settings.state.off': 'Inaktiv: ',
         'preview.openFile': 'In der Dateivorschau öffnen',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -2750,13 +2853,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Plus d\'actions',
         'rail.settings': 'Réglages de la barre d\'actions',
         'rail.openSettings': 'Ouvrir les réglages du plugin',
-        'settings.card.title': 'Paramètres de la fenêtre d’outils Git',
-        'settings.card.desc': 'Placement du panneau, boutons de la barre d’actions et message de commit par IA',
+        'settings.card.title': 'Paramètres du panneau Git',
+        'settings.card.desc': 'Placement, barre d’actions, message de commit IA, cache de liste et actualisation de l’état',
         'settings.placement.title': 'Placement du panneau',
         'settings.placement.tab': 'Afficher l’onglet Git dans la zone de conversation',
         'settings.placement.tabHint': 'Désactivé, le panneau reste accessible depuis la barre latérale droite et le panneau inférieur.',
         'settings.placement.immersive': 'Mode immersif (pleine hauteur, zone de saisie masquée)',
         'settings.placement.immersiveHint': 'Activé, l’onglet Git occupe toute la hauteur de la conversation et la zone de saisie s’efface ; approbations et questions restent visibles.',
+      'settings.list.title': 'Liste et cache',
+      'settings.list.rowCache': 'Mémoriser l’état de la liste des dépôts (cache local)',
+      'settings.list.rowCacheHint': 'À l’ouverture, la branche et les compteurs de changements connus s’affichent immédiatement, puis sont actualisés en arrière-plan ; désactivé, chaque visite relit tout.',
+      'settings.list.scanSlots': 'Parallélisme du scan des dépôts',
+      'settings.list.scanSlotsHint': 'Nombre de dépôts analysés simultanément. 4 s’est révélé le plus rapide ; sur disque lent, plus élevé peut être plus lent.',
+      'settings.list.autoRefresh': 'Actualisation automatique de l’état',
+      'settings.list.autoRefreshHint': 'Lit l’état des dépôts à intervalle fixe ; 0 ou désactivé coupe l’actualisation. En pause quand le panneau n’est pas visible ou la fenêtre réduite.',
+      'settings.list.autoRefreshOff': 'Désactivé',
+      'settings.list.autoRefreshEvery': 'Toutes les {n} s',
+      'settings.list.refreshOnFocus': 'Actualiser dès le retour sur le panneau',
+      'settings.list.refreshOnFocusHint': 'Au retour de la fenêtre, lit immédiatement une passe d’état (sans rescanner la liste des dépôts).',
+      'settings.state.on': 'Activé : ',
+      'settings.state.off': 'Désactivé : ',
         'preview.openFile': 'Ouvrir dans l’aperçu du fichier',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3058,13 +3174,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Другие действия',
         'rail.settings': 'Настройки панели действий',
         'rail.openSettings': 'Открыть настройки плагина',
-        'settings.card.title': 'Настройки окна инструментов Git',
-        'settings.card.desc': 'Размещение панели, кнопки панели действий и сообщение коммита от ИИ',
+        'settings.card.title': 'Настройки Git-панели',
+        'settings.card.desc': 'Размещение, панель действий, AI-сообщение коммита, кэш списка и обновление состояния',
         'settings.placement.title': 'Размещение панели',
         'settings.placement.tab': 'Показывать вкладку Git в области диалога',
         'settings.placement.tabHint': 'В выключенном виде панель доступна из правой боковой панели и нижней панели.',
         'settings.placement.immersive': 'Полноэкранный режим (во всю высоту, без поля ввода)',
         'settings.placement.immersiveHint': 'Во включённом виде вкладка Git занимает всю высоту области диалога, поле ввода скрывается; подтверждения и вопросы остаются на виду.',
+      'settings.list.title': 'Список и кэш',
+      'settings.list.rowCache': 'Помнить состояние списка репозиториев (локальный кэш)',
+      'settings.list.rowCacheHint': 'При открытии панели последняя ветка и счётчики изменений показываются сразу и обновляются в фоне; выключено — каждый визит читает заново.',
+      'settings.list.scanSlots': 'Параллелизм сканирования репозиториев',
+      'settings.list.scanSlotsHint': 'Сколько репозиториев сканируется одновременно. По замерам быстрее всего 4; на медленном диске больше может быть медленнее.',
+      'settings.list.autoRefresh': 'Автообновление состояния',
+      'settings.list.autoRefreshHint': 'Читает состояние репозиториев с фиксированным интервалом; 0 или «выкл» отключает его. Пауза, когда панель не видна или окно свёрнуто.',
+      'settings.list.autoRefreshOff': 'Выкл.',
+      'settings.list.autoRefreshEvery': 'Каждые {n} с',
+      'settings.list.refreshOnFocus': 'Обновить сразу при возврате к панели',
+      'settings.list.refreshOnFocusHint': 'Когда окно снова видно или в фокусе, сразу читается один проход состояния (без повторного сканирования списка репозиториев).',
+      'settings.state.on': 'Вкл.: ',
+      'settings.state.off': 'Выкл.: ',
         'preview.openFile': 'Открыть в предпросмотре файла',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3366,13 +3495,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Mais ações',
         'rail.settings': 'Configurações da barra de ações',
         'rail.openSettings': 'Abrir configurações do plugin',
-        'settings.card.title': 'Configurações da janela de ferramentas Git',
-        'settings.card.desc': 'Posição do painel, botões da barra de ações e mensagem de commit por IA',
+        'settings.card.title': 'Configurações do painel Git',
+        'settings.card.desc': 'Posicionamento, barra de ações, mensagem de commit de IA, cache da lista e atualização do estado',
         'settings.placement.title': 'Posição do painel',
         'settings.placement.tab': 'Mostrar a aba Git na área de conversa',
         'settings.placement.tabHint': 'Desligado, o painel continua disponível na barra lateral direita e no painel inferior.',
         'settings.placement.immersive': 'Modo imersivo (altura total, campo de entrada oculto)',
         'settings.placement.immersiveHint': 'Ativado, a aba Git ocupa toda a altura da conversa e o campo de entrada fica de lado; aprovações e perguntas continuam visíveis.',
+      'settings.list.title': 'Lista e cache',
+      'settings.list.rowCache': 'Lembrar o estado da lista de repositórios (cache local)',
+      'settings.list.rowCacheHint': 'Ao abrir o painel, o último branch e as contagens de alterações aparecem na hora e são atualizados em segundo plano; desligado, cada visita relê tudo.',
+      'settings.list.scanSlots': 'Concorrência da varredura de repositórios',
+      'settings.list.scanSlotsHint': 'Quantos repositórios são verificados ao mesmo tempo. 4 foi o mais rápido nos testes; em discos lentos, valores maiores podem ser mais lentos.',
+      'settings.list.autoRefresh': 'Atualização automática do estado',
+      'settings.list.autoRefreshHint': 'Lê o estado dos repositórios num intervalo fixo; 0 ou desligado desativa. Pausado quando o painel não está visível ou a janela está minimizada.',
+      'settings.list.autoRefreshOff': 'Desligado',
+      'settings.list.autoRefreshEvery': 'A cada {n} s',
+      'settings.list.refreshOnFocus': 'Atualizar assim que voltar ao painel',
+      'settings.list.refreshOnFocusHint': 'Quando a janela volta a ficar visível ou em foco, lê imediatamente uma passagem de estado (sem rescandear a lista de repositórios).',
+      'settings.state.on': 'Ativado: ',
+      'settings.state.off': 'Desativado: ',
         'preview.openFile': 'Abrir na pré-visualização do arquivo',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3674,13 +3816,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Altre azioni',
         'rail.settings': 'Impostazioni della barra delle azioni',
         'rail.openSettings': 'Apri le impostazioni del plugin',
-        'settings.card.title': 'Impostazioni della finestra strumenti Git',
-        'settings.card.desc': 'Posizione del pannello, pulsanti della barra azioni e messaggio di commit con IA',
+        'settings.card.title': 'Impostazioni del pannello Git',
+        'settings.card.desc': 'Posizionamento, barra azioni, messaggio di commit IA, cache dell’elenco e aggiornamento dello stato',
         'settings.placement.title': 'Posizione del pannello',
         'settings.placement.tab': 'Mostra la scheda Git nell’area conversazione',
         'settings.placement.tabHint': 'Da spento, il pannello resta raggiungibile dalla barra laterale destra e dal pannello inferiore.',
         'settings.placement.immersive': 'Modalità immersiva (altezza piena, input nascosto)',
         'settings.placement.immersiveHint': 'Attiva, la scheda Git occupa tutta l’altezza della conversazione e la barra di input resta nascosta; approvazioni e domande restano visibili.',
+      'settings.list.title': 'Elenco e cache',
+      'settings.list.rowCache': 'Ricorda lo stato dell’elenco dei repository (cache locale)',
+      'settings.list.rowCacheHint': 'All’apertura del pannello l’ultimo branch noto e i conteggi delle modifiche compaiono subito e vengono aggiornati in background; disattivato, ogni visita rilegge tutto.',
+      'settings.list.scanSlots': 'Concorrenza della scansione dei repository',
+      'settings.list.scanSlotsHint': 'Quanti repository vengono scansionati contemporaneamente. Nei test 4 è risultato il più veloce; su dischi lenti un valore più alto può rallentare.',
+      'settings.list.autoRefresh': 'Aggiornamento automatico dello stato',
+      'settings.list.autoRefreshHint': 'Legge lo stato dei repository a intervalli fissi; 0 o disattivato lo disabilita. In pausa quando il pannello non è visibile o la finestra è ridotta a icona.',
+      'settings.list.autoRefreshOff': 'Disattivato',
+      'settings.list.autoRefreshEvery': 'Ogni {n} s',
+      'settings.list.refreshOnFocus': 'Aggiorna appena si torna al pannello',
+      'settings.list.refreshOnFocusHint': 'Quando la finestra torna visibile o riceve il focus, legge subito uno stato (senza riscansionare l’elenco dei repository).',
+      'settings.state.on': 'Attivo: ',
+      'settings.state.off': 'Disattivo: ',
         'preview.openFile': 'Apri nell’anteprima del file',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -3982,13 +4137,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Meer acties',
         'rail.settings': 'Instellingen van de actiebalk',
         'rail.openSettings': 'Plugin-instellingen openen',
-        'settings.card.title': 'Instellingen van het Git-werkvenster',
-        'settings.card.desc': 'Paneelplaatsing, knoppen van de actiebalk en AI-commitbericht',
+        'settings.card.title': 'Git-paneelinstellingen',
+        'settings.card.desc': 'Plaatsing, actiebalk, AI-commitbericht, lijstcache en statusvernieuwing',
         'settings.placement.title': 'Paneelplaatsing',
         'settings.placement.tab': 'Git-tabblad in het gespreksgebied tonen',
         'settings.placement.tabHint': 'Uitgeschakeld blijft het paneel bereikbaar via de rechterzijbalk en het onderpaneel.',
         'settings.placement.immersive': 'Meeslepende modus (volledige hoogte, verborgen invoerveld)',
         'settings.placement.immersiveHint': 'Aan: het Git-tabblad vult de hele gespreksruimte en het invoerveld wijkt; goedkeuringen en vragen blijven zichtbaar.',
+      'settings.list.title': 'Lijst & cache',
+      'settings.list.rowCache': 'Repositorylijst onthouden (lokale cache)',
+      'settings.list.rowCacheHint': 'Bij het openen worden de laatst bekende branch en wijzigingstellers direct getoond en op de achtergrond ververst; uit, elke keer opnieuw gelezen.',
+      'settings.list.scanSlots': 'Paralleliteit van de repositoryscan',
+      'settings.list.scanSlotsHint': 'Hoeveel repositories tegelijk worden gescand. 4 was in tests het snelst; op trage schijven kan meer trager zijn.',
+      'settings.list.autoRefresh': 'Status automatisch vernieuwen',
+      'settings.list.autoRefreshHint': 'Leest de repositorystatus op een vast interval; 0 of uit schakelt het uit. Gepauzeerd wanneer het paneel niet zichtbaar is of het venster geminimaliseerd is.',
+      'settings.list.autoRefreshOff': 'Uit',
+      'settings.list.autoRefreshEvery': 'Elke {n} s',
+      'settings.list.refreshOnFocus': 'Vernieuwen zodra het paneel weer focus krijgt',
+      'settings.list.refreshOnFocusHint': 'Zodra het venster weer zichtbaar is of focus krijgt, wordt direct één statusronde gelezen (zonder de repositorylijst opnieuw te scannen).',
+      'settings.state.on': 'Aan: ',
+      'settings.state.off': 'Uit: ',
         'preview.openFile': 'Openen in de bestandsvoorbeeld',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4290,13 +4458,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Więcej działań',
         'rail.settings': 'Ustawienia paska działań',
         'rail.openSettings': 'Otwórz ustawienia wtyczki',
-        'settings.card.title': 'Ustawienia okna narzędzi Git',
-        'settings.card.desc': 'Rozmieszczenie panelu, przyciski paska akcji i wiadomość commita od AI',
+        'settings.card.title': 'Ustawienia panelu Git',
+        'settings.card.desc': 'Umiejscowienie, pasek akcji, wiadomość commit AI, cache listy i odświeżanie stanu',
         'settings.placement.title': 'Rozmieszczenie panelu',
         'settings.placement.tab': 'Pokazuj kartę Git w obszarze rozmowy',
         'settings.placement.tabHint': 'Po wyłączeniu panel pozostaje dostępny z prawego paska bocznego i dolnego panelu.',
         'settings.placement.immersive': 'Tryb immersyjny (pełna wysokość, ukryte pole wpisywania)',
         'settings.placement.immersiveHint': 'Po włączeniu karta Git wypełnia całą wysokość rozmowy, a pole wpisywania się chowa; zatwierdzenia i pytania pozostają widoczne.',
+      'settings.list.title': 'Lista i pamięć podręczna',
+      'settings.list.rowCache': 'Zapamiętuj stan listy repozytoriów (lokalny cache)',
+      'settings.list.rowCacheHint': 'Po otwarciu panelu ostatnia gałąź i liczniki zmian pokazują się od razu i są odświeżane w tle; wyłączone — każda wizyta czyta je od nowa.',
+      'settings.list.scanSlots': 'Równoległość skanowania repozytoriów',
+      'settings.list.scanSlotsHint': 'Ile repozytoriów skanowanych jest jednocześnie. W pomiarach najszybsze było 4; na wolnym dysku większa wartość może być wolniejsza.',
+      'settings.list.autoRefresh': 'Automatyczne odświeżanie stanu',
+      'settings.list.autoRefreshHint': 'Odczytuje stan repozytoriów w stałych odstępach; 0 lub wyłączone to wyłącza. Wstrzymane, gdy panel jest niewidoczny lub okno zminimalizowane.',
+      'settings.list.autoRefreshOff': 'Wyłączone',
+      'settings.list.autoRefreshEvery': 'Co {n} s',
+      'settings.list.refreshOnFocus': 'Odśwież od razu po powrocie do panelu',
+      'settings.list.refreshOnFocusHint': 'Gdy okno znów jest widoczne lub ma fokus, od razu czytany jest jeden przebieg stanu (bez ponownego skanowania listy repozytoriów).',
+      'settings.state.on': 'Włączone: ',
+      'settings.state.off': 'Wyłączone: ',
         'preview.openFile': 'Otwórz w podglądzie pliku',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4598,13 +4779,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Fler åtgärder',
         'rail.settings': 'Inställningar för åtgärdsfältet',
         'rail.openSettings': 'Öppna plugininställningar',
-        'settings.card.title': 'Inställningar för Git-verktygsfönstret',
-        'settings.card.desc': 'Panelplacering, knappar i åtgärdsfältet och AI-commitmeddelande',
+        'settings.card.title': 'Git-panelinställningar',
+        'settings.card.desc': 'Placering, åtgärdsfält, AI-commit-meddelande, listcache och statusuppdatering',
         'settings.placement.title': 'Panelplacering',
         'settings.placement.tab': 'Visa Git-fliken i konversationsytan',
         'settings.placement.tabHint': 'Avstängd finns panelen kvar via höger sidopanel och nedre panelen.',
         'settings.placement.immersive': 'Uppslukande läge (full höjd, dolt inmatningsfält)',
         'settings.placement.immersiveHint': 'På: Git-fliken fyller hela konversationsytan och inmatningsfältet träder åt sidan; godkännanden och frågor visas fortfarande.',
+      'settings.list.title': 'Lista & cache',
+      'settings.list.rowCache': 'Kom ihåg repolistans tillstånd (lokal cache)',
+      'settings.list.rowCacheHint': 'Vid öppning visas senast kända gren och ändringar direkt och uppdateras i bakgrunden; av, läses allt om vid varje besök.',
+      'settings.list.scanSlots': 'Parallellitet för reposcanning',
+      'settings.list.scanSlotsHint': 'Hur många repon som skannas samtidigt. 4 var snabbast i mätningar; på långsamma diskar kan mer vara långsammare.',
+      'settings.list.autoRefresh': 'Automatisk statusuppdatering',
+      'settings.list.autoRefreshHint': 'Läser repositorystatus med fast intervall; 0 eller av stänger av det. Pausas när panelen inte syns eller fönstret är minimerat.',
+      'settings.list.autoRefreshOff': 'Av',
+      'settings.list.autoRefreshEvery': 'Var {n} s',
+      'settings.list.refreshOnFocus': 'Uppdatera så snart panelen får fokus igen',
+      'settings.list.refreshOnFocusHint': 'När fönstret syns igen eller får fokus läses en statusrunda direkt (utan att skanna om repolistan).',
+      'settings.state.on': 'På: ',
+      'settings.state.off': 'Av: ',
         'preview.openFile': 'Öppna i filförhandsvisningen',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -4906,13 +5100,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Diğer eylemler',
         'rail.settings': 'Eylem çubuğu ayarları',
         'rail.openSettings': 'Eklenti ayarlarını aç',
-        'settings.card.title': 'Git araç penceresi ayarları',
-        'settings.card.desc': 'Panel yerleşimi, eylem çubuğu düğmeleri ve AI commit mesajı',
+        'settings.card.title': 'Git paneli ayarları',
+        'settings.card.desc': 'Yerleşim, eylem çubuğu, AI commit iletisi, liste önbelleği ve durum yenileme',
         'settings.placement.title': 'Panel yerleşimi',
         'settings.placement.tab': 'Konuşma alanında Git sekmesini göster',
         'settings.placement.tabHint': 'Kapatıldığında panel sağ kenar çubuğundan ve alt panelden açılabilir.',
         'settings.placement.immersive': 'Odaklanma modu (tam yükseklik, gizli giriş alanı)',
         'settings.placement.immersiveHint': 'Açıkken Git sekmesi tüm konuşma alanını kaplar ve giriş alanı gizlenir; onaylar ve sorular yine de görünür.',
+      'settings.list.title': 'Liste ve önbellek',
+      'settings.list.rowCache': 'Depo listesi durumunu hatırla (yerel önbellek)',
+      'settings.list.rowCacheHint': 'Panel açıldığında bilinen son dal ve değişiklik sayıları hemen gösterilir ve arka planda yenilenir; kapalıyken her açılışta yeniden okunur.',
+      'settings.list.scanSlots': 'Depo tarama eşzamanlılığı',
+      'settings.list.scanSlotsHint': 'Aynı anda taranan depo sayısı üst sınırı. Ölçümlerde 4 en hızlısıydı; yavaş disklerde daha yüksek değer daha yavaş olabilir.',
+      'settings.list.autoRefresh': 'Durumu otomatik yenile',
+      'settings.list.autoRefreshHint': 'Depo durumunu sabit aralıklarla okur; 0 veya kapalı devre dışı bırakır. Panel görünmezken veya pencere küçültülürken duraklar.',
+      'settings.list.autoRefreshOff': 'Kapalı',
+      'settings.list.autoRefreshEvery': 'Her {n} sn',
+      'settings.list.refreshOnFocus': 'Panele dönünce hemen yenile',
+      'settings.list.refreshOnFocusHint': 'Pencere yeniden görünür olduğunda veya odak kazandığında hemen bir durum turu okunur (depo listesi yeniden taranmaz).',
+      'settings.state.on': 'Açık: ',
+      'settings.state.off': 'Kapalı: ',
         'preview.openFile': 'Dosya önizlemesinde aç',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5214,13 +5421,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Tindakan lain',
         'rail.settings': 'Pengaturan bilah tindakan',
         'rail.openSettings': 'Buka pengaturan plugin',
-        'settings.card.title': 'Pengaturan jendela alat Git',
-        'settings.card.desc': 'Penempatan panel, tombol bilah aksi dan pesan commit AI',
+        'settings.card.title': 'Pengaturan panel Git',
+        'settings.card.desc': 'Penempatan, bilah aksi, pesan commit AI, cache daftar, dan pembaruan status',
         'settings.placement.title': 'Penempatan panel',
         'settings.placement.tab': 'Tampilkan tab Git di area percakapan',
         'settings.placement.tabHint': 'Dimatikan, panel tetap bisa dibuka dari bilah sisi kanan dan panel bawah.',
         'settings.placement.immersive': 'Mode imersif (tinggi penuh, kolom masukan tersembunyi)',
         'settings.placement.immersiveHint': 'Aktif: tab Git memenuhi seluruh tinggi area percakapan dan kolom masukan mengalah; persetujuan dan pertanyaan tetap tampil.',
+      'settings.list.title': 'Daftar & cache',
+      'settings.list.rowCache': 'Ingat status daftar repositori (cache lokal)',
+      'settings.list.rowCacheHint': 'Saat panel dibuka, branch dan jumlah perubahan terakhir langsung tampil dan diperbarui di latar belakang; mati, setiap kunjungan membaca ulang.',
+      'settings.list.scanSlots': 'Paralelisme pemindaian repositori',
+      'settings.list.scanSlotsHint': 'Berapa banyak repositori yang dipindai sekaligus. Dari pengukuran, 4 paling cepat; pada disk lambat nilai lebih besar bisa lebih lambat.',
+      'settings.list.autoRefresh': 'Pembaruan status otomatis',
+      'settings.list.autoRefreshHint': 'Membaca status repositori pada interval tetap; 0 atau mati menonaktifkannya. Dijeda saat panel tidak terlihat atau jendela diminimalkan.',
+      'settings.list.autoRefreshOff': 'Mati',
+      'settings.list.autoRefreshEvery': 'Setiap {n} detik',
+      'settings.list.refreshOnFocus': 'Segarkan begitu kembali ke panel',
+      'settings.list.refreshOnFocusHint': 'Saat jendela kembali terlihat atau mendapat fokus, satu putaran status langsung dibaca (tanpa memindai ulang daftar repositori).',
+      'settings.state.on': 'Aktif: ',
+      'settings.state.off': 'Nonaktif: ',
         'preview.openFile': 'Buka di pratinjau berkas',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5522,13 +5742,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'Thao tác khác',
         'rail.settings': 'Cài đặt thanh thao tác',
         'rail.openSettings': 'Mở cài đặt plugin',
-        'settings.card.title': 'Cài đặt cửa sổ công cụ Git',
-        'settings.card.desc': 'Vị trí bảng, nút thanh tác vụ và thông điệp commit do AI viết',
+        'settings.card.title': 'Cài đặt bảng Git',
+        'settings.card.desc': 'Vị trí, thanh thao tác, thông tin commit AI, bộ nhớ đệm danh sách và cập nhật trạng thái',
         'settings.placement.title': 'Vị trí bảng',
         'settings.placement.tab': 'Hiện thẻ Git trong vùng hội thoại',
         'settings.placement.tabHint': 'Tắt rồi, bảng vẫn mở được từ thanh bên phải và bảng dưới.',
         'settings.placement.immersive': 'Chế độ đắm chìm (chiều cao đầy đủ, ẩn ô nhập)',
         'settings.placement.immersiveHint': 'Bật: thẻ Git chiếm toàn bộ chiều cao vùng hội thoại và ô nhập thu vào; phê duyệt và câu hỏi vẫn hiển thị bình thường.',
+      'settings.list.title': 'Danh sách & bộ nhớ đệm',
+      'settings.list.rowCache': 'Ghi nhớ trạng thái danh sách kho (bộ nhớ đệm cục bộ)',
+      'settings.list.rowCacheHint': 'Khi mở bảng, nhánh và số thay đổi lần trước hiện ngay và được làm mới nền; tắt, mỗi lần mở đều đọc lại.',
+      'settings.list.scanSlots': 'Độ song song quét kho',
+      'settings.list.scanSlotsHint': 'Số kho được quét đồng thời. Đo thực tế cho thấy 4 nhanh nhất; đĩa chậm thì số lớn hơn có thể chậm hơn.',
+      'settings.list.autoRefresh': 'Tự động cập nhật trạng thái',
+      'settings.list.autoRefreshHint': 'Đọc trạng thái kho theo khoảng thời gian cố định; 0 hoặc tắt để tắt tính năng. Tạm dừng khi bảng không hiển thị hoặc cửa sổ được thu nhỏ.',
+      'settings.list.autoRefreshOff': 'Tắt',
+      'settings.list.autoRefreshEvery': 'Mỗi {n} giây',
+      'settings.list.refreshOnFocus': 'Cập nhật ngay khi quay lại bảng',
+      'settings.list.refreshOnFocusHint': 'Khi cửa sổ hiện lại hoặc nhận tiêu điểm, đọc ngay một lượt trạng thái (không quét lại danh sách kho).',
+      'settings.state.on': 'Bật: ',
+      'settings.state.off': 'Tắt: ',
         'preview.openFile': 'Mở trong xem trước tệp',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -5830,13 +6063,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'مزيد من الإجراءات',
         'rail.settings': 'إعدادات شريط الإجراءات',
         'rail.openSettings': 'فتح إعدادات الإضافة',
-        'settings.card.title': 'إعدادات نافذة أدوات Git',
-        'settings.card.desc': 'موضع اللوحة، أزرار شريط الإجراءات ورسالة إيداع بالذكاء الاصطناعي',
+        'settings.card.title': 'إعدادات لوحة Git',
+        'settings.card.desc': 'الموضع وشريط الإجراءات ورسالة الالتزام بالذكاء الاصطناعي وذاكرة القائمة وتحديث الحالة',
         'settings.placement.title': 'موضع اللوحة',
         'settings.placement.tab': 'إظهار تبويب Git في منطقة المحادثة',
         'settings.placement.tabHint': 'عند الإيقاف تبقى اللوحة متاحة من الشريط الجانبي الأيمن واللوحة السفلية.',
         'settings.placement.immersive': 'الوضع الغامر (ارتفاع كامل، إخفاء صندوق الكتابة)',
         'settings.placement.immersiveHint': 'عند التشغيل يملأ تبويب Git منطقة المحادثة بكامل ارتفاعها ويتراجع صندوق الكتابة؛ تظل الموافقات والأسئلة ظاهرة كالمعتاد.',
+      'settings.list.title': 'القائمة وذاكرة التخزين المؤقت',
+      'settings.list.rowCache': 'تذكّر حالة قائمة المستودعات (ذاكرة محلية)',
+      'settings.list.rowCacheHint': 'عند فتح اللوحة يُعرض الفرع وعدّاد التغييرات المعروف سابقًا فورًا ويُحدَّث في الخلفية؛ عند الإيقاف يُعاد القراءة في كل زيارة.',
+      'settings.list.scanSlots': 'تزامن فحص المستودعات',
+      'settings.list.scanSlotsHint': 'الحد الأعلى لعدد المستودعات المفحوصة في وقت واحد. القياسات أظهرت أن 4 هو الأسرع؛ على الأقراص البطيئة قد تكون القيم الأعلى أبطأ.',
+      'settings.list.autoRefresh': 'التحديث التلقائي للحالة',
+      'settings.list.autoRefreshHint': 'يقرأ حالة المستودعات بفاصل زمني ثابت؛ 0 أو الإيقاف يعطّله. يتوقف مؤقتًا عند إخفاء اللوحة أو تصغير النافذة.',
+      'settings.list.autoRefreshOff': 'إيقاف',
+      'settings.list.autoRefreshEvery': 'كل {n} ثانية',
+      'settings.list.refreshOnFocus': 'تحديث فور العودة إلى اللوحة',
+      'settings.list.refreshOnFocusHint': 'عند عودة النافذة للظهور أو استعادة التركيز، تُقرأ جولة حالة واحدة فورًا (دون إعادة فحص قائمة المستودعات).',
+      'settings.state.on': 'مُفعّل: ',
+      'settings.state.off': 'مُعطّل: ',
         'preview.openFile': 'افتح في معاينة الملف',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6138,13 +6384,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'अधिक क्रियाएँ',
         'rail.settings': 'क्रिया पट्टी सेटिंग्स',
         'rail.openSettings': 'प्लगइन सेटिंग खोलें',
-        'settings.card.title': 'Git टूल विंडो सेटिंग्स',
-        'settings.card.desc': 'पैनल प्लेसमेंट, एक्शन रेल बटन और AI कमिट संदेश',
+        'settings.card.title': 'Git पैनल सेटिंग्स',
+        'settings.card.desc': 'प्लेसमेंट, एक्शन रेल, AI कमिट संदेश, सूची कैश और स्थिति रिफ्रेश',
         'settings.placement.title': 'पैनल प्लेसमेंट',
         'settings.placement.tab': 'संवाद क्षेत्र में Git टैब दिखाएँ',
         'settings.placement.tabHint': 'बंद करने पर भी पैनल दाएँ साइडबार और निचले पैनल से खुलता है।',
         'settings.placement.immersive': 'इमर्सिव मोड (पूरी ऊँचाई, छिपा इनपुट बॉक्स)',
         'settings.placement.immersiveHint': 'चालू होने पर Git टैब पूरे संवाद क्षेत्र की ऊँचाई घेर लेता है और इनपुट बॉक्स हट जाता है; अनुमोदन और प्रश्न फिर भी दिखते हैं।',
+      'settings.list.title': 'सूची और कैश',
+      'settings.list.rowCache': 'रिपॉज़िटरी सूची की स्थिति याद रखें (लोकल कैश)',
+      'settings.list.rowCacheHint': 'पैनल खुलने पर आख़िरी ज्ञात ब्रांच और बदलाव गिनती तुरंत दिखती है और पृष्ठभूमि में अपडेट होती है; बंद होने पर हर बार दोबारा पढ़ा जाता है।',
+      'settings.list.scanSlots': 'रिपॉज़िटरी स्कैन समानांतरता',
+      'settings.list.scanSlotsHint': 'एक साथ कितनी रिपॉज़िटरी स्कैन हों। माप में 4 सबसे तेज़ था; धीमी डिस्क पर बड़ी संख्या धीमी हो सकती है।',
+      'settings.list.autoRefresh': 'स्थिति का स्वतः रिफ्रेश',
+      'settings.list.autoRefreshHint': 'निश्चित अंतराल पर रिपॉज़िटरी स्थिति पढ़ता है; 0 या बंद होने पर अक्षम। पैनल अदृश्य या विंडो छोटी होने पर रुक जाता है।',
+      'settings.list.autoRefreshOff': 'बंद',
+      'settings.list.autoRefreshEvery': 'हर {n} सेकंड',
+      'settings.list.refreshOnFocus': 'पैनल पर लौटते ही तुरंत रिफ्रेश',
+      'settings.list.refreshOnFocusHint': 'जब विंडो दुबारा दिखे या फ़ोकस पाए, तुरंत एक चक्र स्थिति पढ़ी जाती है (सूची दोबारा स्कैन नहीं होती)।',
+      'settings.state.on': 'चालू: ',
+      'settings.state.off': 'बंद: ',
         'preview.openFile': 'फ़ाइल पूर्वावलोकन में खोलें',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6446,13 +6705,26 @@ window.__ModuleLoader__.load({
         'rail.more': 'การทำงานเพิ่มเติม',
         'rail.settings': 'ตั้งค่าแถบการทำงาน',
         'rail.openSettings': 'เปิดการตั้งค่าปลั๊กอิน',
-        'settings.card.title': 'การตั้งค่าหน้าต่างเครื่องมือ Git',
-        'settings.card.desc': 'ตำแหน่งแผง, ปุ่มแถบการทำงานและข้อความคอมมิตโดย AI',
+        'settings.card.title': 'การตั้งค่าแผง Git',
+        'settings.card.desc': 'การวางตำแหน่ง, แถบปุ่ม, ข้อความคอมมิต AI, แคชรายการและการรีเฟรชสถานะ',
         'settings.placement.title': 'ตำแหน่งแผง',
         'settings.placement.tab': 'แสดงแท็บ Git ในพื้นที่บทสนทนา',
         'settings.placement.tabHint': 'ปิดแล้วยังเปิดแผงจากแถบข้างขวาหรือแผงล่างได้',
         'settings.placement.immersive': 'โหมดดื่มด่ำ (เต็มความสูง, ซ่อนกล่องพิมพ์)',
         'settings.placement.immersiveHint': 'เมื่อเปิด แท็บ Git จะกินพื้นที่สูงทั้งหมดของบทสนทนาและกล่องพิมพ์จะถอยออก; การอนุมัติและคำถามยังแสดงตามปกติ',
+      'settings.list.title': 'รายการและแคช',
+      'settings.list.rowCache': 'จำสถานะรายการที่เก็บ (แคชในเครื่อง)',
+      'settings.list.rowCacheHint': 'เมื่อเปิดแผงจะแสดง branch และจำนวนการเปลี่ยนแปลงล่าสุดทันทีแล้วรีเฟรชเบื้องหลัง; ปิดไว้จะอ่านใหม่ทุกครั้ง',
+      'settings.list.scanSlots': 'จำนวนสแกนพร้อมกันของที่เก็บ',
+      'settings.list.scanSlotsHint': 'จำนวนที่เก็บสูงสุดที่สแกนพร้อมกัน จากการวัด 4 เร็วที่สุด; ดิสก์ช้าๆ ค่าที่มากขึ้นอาจช้าลง',
+      'settings.list.autoRefresh': 'รีเฟรชสถานะอัตโนมัติ',
+      'settings.list.autoRefreshHint': 'อ่านสถานะที่เก็บตามช่วงเวลาคงที่; 0 หรือปิดจะไม่รีเฟรชอัตโนมัติ หยุดชั่วคราวเมื่อแผงไม่แสดงหรือหน้าต่างถูกย่อ',
+      'settings.list.autoRefreshOff': 'ปิด',
+      'settings.list.autoRefreshEvery': 'ทุก {n} วินาที',
+      'settings.list.refreshOnFocus': 'รีเฟรชทันทีเมื่อกลับมาที่แผง',
+      'settings.list.refreshOnFocusHint': 'เมื่อหน้าต่างแสดงอีกครั้งหรือได้รับโฟกัส จะอ่านสถานะหนึ่งรอบทันที (ไม่สแกนรายการที่เก็บซ้ำ)',
+      'settings.state.on': 'เปิด: ',
+      'settings.state.off': 'ปิด: ',
         'preview.openFile': 'เปิดในตัวอย่างไฟล์',
         'lf.added': '+{count}',
         'lf.deleted': '-{count}',
@@ -6778,7 +7050,7 @@ window.__ModuleLoader__.load({
        mode, quota errors and corrupted payloads degrade to "no seed", never to
        an error — and never to a rollback of live state (seeding still only
        fills cold state, see the panel side below). */
-    const PAINT_KEY = 'dsh-ide-git.paint.v1'
+    const PAINT_KEY = 'dsh-git-panel.paint.v1'
     let paintHydrated = false
 
     function hydratePaint() {
@@ -6870,6 +7142,76 @@ window.__ModuleLoader__.load({
       return paintRoot.get(cwd)
     }
 
+    /* ---- persistent row summaries: the LIST counterpart of the page seed.
+       The seeds above live in sessionStorage and die with the tab, so a fresh
+       app start re-ran every row scan and the list painted '…' per row until
+       each scan crawled back (user report: entering the panel is all blank).
+       localStorage survives the tab, so the last known branch/count paints the
+       moment rows mount, and the mount refresh re-proves every field a moment
+       later — the same no-expiry trade paintPage makes: staleness costs one
+       repaint, never a wrong action (rows drop superseded scans by revision). ---- */
+    const ROWS_KEEP_WARM = 16
+    const ROWS_KEY = 'dsh-git-panel.rows.v1'
+    let rowsHydrated = false
+    const paintRows = new Map()   /* repoRoot -> { at, summary } */
+
+    /* Enough shape to render a row head AND a changes body: the head reads
+       branch, the body iterates the four groups and concats staged/unstaged/
+       untracked. Anything else degrades to "no seed" — never to an error,
+       never to a rollback. */
+    function isRowSummaryShape(value) {
+      if (value === null || typeof value !== 'object') return false
+      if (value.branch !== null && typeof value.branch !== 'string') return false
+      const changes = value.changes
+      if (changes === null || typeof changes !== 'object') return false
+      return ['staged', 'unstaged', 'untracked', 'conflicted'].every((group) => Array.isArray(changes[group]))
+    }
+
+    function hydrateRows() {
+      if (rowsHydrated === true) return
+      rowsHydrated = true
+      let parsed = null
+      try {
+        const raw = window.localStorage.getItem(ROWS_KEY)
+        if (typeof raw === 'string' && raw !== '') parsed = JSON.parse(raw)
+      } catch (error) { void error; return }
+      if (parsed === null || typeof parsed !== 'object') return
+      /* Insertion order mirrors the order that was written, so the survivors
+         of the cap are the most recent rows an older build may have stored. */
+      for (const key of Object.keys(parsed)) {
+        if (paintRows.size >= ROWS_KEEP_WARM) break
+        const entry = parsed[key]
+        if (paintRows.has(key) || entry === null || typeof entry !== 'object' || typeof entry.at !== 'number') continue
+        if (isRowSummaryShape(entry.summary) === false) continue
+        paintRows.set(key, entry)
+      }
+    }
+
+    function persistRows() {
+      try {
+        const out = {}
+        for (const [key, entry] of paintRows) out[key] = entry
+        window.localStorage.setItem(ROWS_KEY, JSON.stringify(out))
+      } catch (error) { void error }
+    }
+
+    function readPaintRowSummary(repoRoot) {
+      hydrateRows()
+      const entry = paintRows.get(repoRoot)
+      return entry === undefined ? undefined : entry.summary
+    }
+
+    function writePaintRowSummary(repoRoot, summary) {
+      if (isRowSummaryShape(summary) !== true) return
+      /* No read-side re-tail: reads happen once per mount, while the rows that
+         keep polling keep writing — an LRU tail over writes is exactly the set
+         of rows worth keeping. */
+      paintRows.delete(repoRoot)
+      paintRows.set(repoRoot, { at: Date.now(), summary: summary })
+      while (paintRows.size > ROWS_KEEP_WARM) paintRows.delete(paintRows.keys().next().value)
+      persistRows()
+    }
+
     /* ============================== storage ============================== */
 
     /* ---- tree UI state (v0.13.1): the session-scoped seats remount on every
@@ -6877,7 +7219,7 @@ window.__ModuleLoader__.load({
        snapped back to defaults and folders re-folded. One localStorage home,
        GLOBAL by design: which sections you keep folded is a habit, not a
        property of the repository. ---- */
-    const TREE_KEY = 'dsh-ide-git.tree.v1'
+    const TREE_KEY = 'dsh-git-panel.tree.v1'
 
     function readTreeState() {
       try {
@@ -6968,7 +7310,7 @@ window.__ModuleLoader__.load({
       } catch (error) { void error }
     }
 
-    const FAV_KEY = 'dsh-ide-git.favorites.v1'
+    const FAV_KEY = 'dsh-git-panel.favorites.v1'
 
     function readFavorites(repoPath) {
       try {
@@ -6995,7 +7337,7 @@ window.__ModuleLoader__.load({
       return next
     }
 
-    const RAIL_KEY = 'dsh-ide-git.rail.v1'
+    const RAIL_KEY = 'dsh-git-panel.rail.v1'
 
     /* The action rail is user-composed. RAIL_SPECS is the canonical set AND the
        default order; a stored config only holds a permutation plus the ids the
@@ -7063,11 +7405,11 @@ window.__ModuleLoader__.load({
        localStorage home and its in-panel editor, which is the only editor those
        hosts have. `railForm` is that switch; null means legacy.
        --------------------------------------------------------------------- */
-    const RAIL_NS = 'ide-git'
+    const RAIL_NS = 'git-panel'
     /* One write window for the settings card: a burst of switches becomes one
        atomic mutation instead of a stream the Host can lose. */
     const FLUSH_MS = 250
-    const RAIL_MIGRATED_KEY = 'dsh-ide-git.rail.v1.migrated'
+    const RAIL_MIGRATED_KEY = 'dsh-git-panel.rail.v1.migrated'
     let railForm = null
     let railMigrating = false
     const railWatchers = new Set()
@@ -7135,6 +7477,64 @@ window.__ModuleLoader__.load({
       return value !== false
     }
 
+    /* Repository-list tunables (the row Config document, same policy as the
+       placement switches): the scan pool's width and the persistent row cache.
+       Both default to the established behavior, and an absent field (an older
+       profile, a host without the row Config) reads as the default — a missing
+       setting never disables a feature.
+       The pool default is the MEASURED knee: each summary spawns three git
+       processes, and the wall time saturates on process contention long before
+       the queue drains. Over 8 real repositories (Windows,
+       scripts/performance-probe.mjs <workspace> 3 "" <slots>, warm medians):
+       2 slots 1419 ms, 4 slots 940 ms, 6 slots 1077 ms, 8 slots 1080 ms — four
+       is the knee; more parallelism only slows every single summary. */
+    function repositoryScanSlots() {
+      const ready = railFormReady()
+      const raw = ready === null || ready.value === null || typeof ready.value !== 'object'
+        ? undefined : Number(ready.value.listScanSlots)
+      if (Number.isFinite(raw) !== true) return 4
+      return Math.max(1, Math.min(16, Math.round(raw)))
+    }
+
+    function rowPaintCacheEnabled() {
+      const ready = railFormReady()
+      if (ready === null) return true
+      const value = ready.value !== null && typeof ready.value === 'object' ? ready.value.rowPaintCache : undefined
+      return value !== false
+    }
+
+    /* Status auto-update strategy (the row Config document, same policy as the
+       placement switches). Three trigger layers:
+       1. poll — the list rows and the workbench summary tick on
+          `autoRefreshMs` (0 = off, missing field = the historical 12 s);
+          in-flight scans skip a tick, and a hidden document skips too, so a
+          minimized window burns nothing.
+       2. wake — when the window becomes visible or focused again
+          (`refreshOnFocus`, default on) one cheap round fires: row summaries +
+          the workbench summary, throttled to one per second. It deliberately
+          does NOT rescan the repository list (that is the mount job, with its
+          15 s server cache) and does NOT reload history (no list jump; the
+          refresh button remains the full re-prove).
+       3. the existing triggers — mount, seat visibility, session/repo switch,
+           post-write refresh — stay exactly as they were.
+       Scope: auto-update covers STATUS ONLY. The repository LIST (which
+       checkouts exist) changes rarely and is the slowest scan, so it refreshes
+       once per open and on the manual button — never on a poll or a wake. */
+    function autoRefreshMs() {
+      const ready = railFormReady()
+      const raw = ready === null || ready.value === null || typeof ready.value !== 'object'
+        ? undefined : Number(ready.value.autoRefreshMs)
+      if (Number.isFinite(raw) !== true) return 12000
+      return Math.max(0, Math.min(600000, Math.round(raw)))
+    }
+
+    function refreshOnFocusEnabled() {
+      const ready = railFormReady()
+      if (ready === null) return true
+      const value = ready.value !== null && typeof ready.value === 'object' ? ready.value.refreshOnFocus : undefined
+      return value !== false
+    }
+
     function readRailConfig() {
       const ready = railFormReady()
       if (ready !== null) return railConfigOfValues(ready.value)
@@ -7171,8 +7571,8 @@ window.__ModuleLoader__.load({
           const written = active.set(field, visible)
           if (written !== undefined && written !== null && typeof written.then === 'function') {
             void written.then((accepted) => {
-              if (accepted === false) console.warn('[dsh-ide-git] rail setting "' + field + '" was refused by the host')
-            }, (error) => { console.warn('[dsh-ide-git] rail setting write failed: ' + String(error && error.message ? error.message : error)) })
+              if (accepted === false) console.warn('[dsh-git-panel] rail setting "' + field + '" was refused by the host')
+            }, (error) => { console.warn('[dsh-git-panel] rail setting write failed: ' + String(error && error.message ? error.message : error)) })
           }
         }
         return
@@ -7204,7 +7604,7 @@ window.__ModuleLoader__.load({
         const settled = Promise.resolve(active.mutate(ops)).then(
           (accepted) => accepted !== false,
           (error) => {
-            console.warn('[dsh-ide-git] rail setting write failed: ' + String(error && error.message ? error.message : error))
+            console.warn('[dsh-git-panel] rail setting write failed: ' + String(error && error.message ? error.message : error))
             return false
           },
         )
@@ -7269,14 +7669,14 @@ window.__ModuleLoader__.load({
         const outcome = writeRailFields(ops, form)
         if (outcome.sent !== true) {
           railMigrating = false
-          console.warn('[dsh-ide-git] legacy rail migration was refused (' + String(outcome.reason) + '); it stays unmarked and is retried')
+          console.warn('[dsh-git-panel] legacy rail migration was refused (' + String(outcome.reason) + '); it stays unmarked and is retried')
           return
         }
         if (outcome.settled === undefined) { done(); return }
         void outcome.settled.then((acceptedWrite) => {
           if (acceptedWrite === true) { done(); return }
           railMigrating = false
-          console.warn('[dsh-ide-git] legacy rail migration was not accepted; it stays unmarked and is retried')
+          console.warn('[dsh-git-panel] legacy rail migration was not accepted; it stays unmarked and is retried')
         })
       } catch (error) { void error }
     }
@@ -7304,7 +7704,7 @@ window.__ModuleLoader__.load({
        panel in the other. The bucket is therefore `chrome:wide|tall`, and what
        is stored is a RATIO of the measured container: resizing the dock or the
        window rescales the panes instead of breaking the layout. */
-    const PANES_KEY = 'dsh-ide-git.panes.v1'
+    const PANES_KEY = 'dsh-git-panel.panes.v1'
     /* Every chrome can now move all three panes (the detail diff window used to
        be a fixed max-height:55% in the columns chrome — user report: it could
        not be resized). The DIFF pane is special: it is carved out of the middle
@@ -7754,7 +8154,7 @@ window.__ModuleLoader__.load({
       children.push(isHead
         ? E('circle', { key: 'dot', 'data-lane': String(row.lane), cx: x(row.lane), cy: middle, r: 3.8, fill: 'none', stroke: color(row.lane), strokeWidth: 2 })
         : E('circle', { key: 'dot', 'data-lane': String(row.lane), cx: x(row.lane), cy: middle, r: 3.6, fill: color(row.lane) }))
-      return E('svg', { className: 'dig-graph', width: width, height: height, viewBox: '0 0 ' + width + ' ' + height }, children)
+      return E('svg', { className: 'dgp-graph', width: width, height: height, viewBox: '0 0 ' + width + ' ' + height }, children)
     }, (prev, next) => prev.row === next.row && prev.height === next.height)
 
     /* ============================== composer send ============================== */
@@ -8087,7 +8487,7 @@ window.__ModuleLoader__.load({
     /* ---------- DOM side of the diff-pane context menu (browser only) ----------
        SSR never calls these: they run inside the pane's onContextMenu, after
        the selection has been captured. The row element under a selection
-       endpoint is either a hand-drawn `.dig-diff-line`, or a DiffBlock row —
+       endpoint is either a hand-drawn `.dgp-diff-line`, or a DiffBlock row —
        a div child of the body whose OWN parent carries the `data-diff`
        marker. `data-diff` is a component attribute (DiffBlock.tsx:199), not a
        hashed CSS-module class, so the lookup does not bet on build-time class
@@ -8110,7 +8510,7 @@ window.__ModuleLoader__.load({
         : node.nodeType === 1 ? node
         : null
       for (let hop = 0; element !== null && element !== undefined && hop < 8; hop += 1) {
-        if (element.classList !== undefined && element.classList.contains('dig-diff-line') === true) {
+        if (element.classList !== undefined && element.classList.contains('dgp-diff-line') === true) {
           return { kind: 'drawn', row: element, body: element.parentElement }
         }
         const parent = element.parentElement
@@ -8156,7 +8556,7 @@ window.__ModuleLoader__.load({
       let span = null
       if (from.kind === 'drawn') {
         const rows = diffLines(patch)
-        const all = from.body === null || from.body === undefined ? [] : Array.prototype.slice.call(from.body.querySelectorAll('.dig-diff-line'))
+        const all = from.body === null || from.body === undefined ? [] : Array.prototype.slice.call(from.body.querySelectorAll('.dgp-diff-line'))
         const fromIndex = all.indexOf(from.row)
         const toIndex = all.indexOf(to.row)
         if (fromIndex >= 0 && toIndex >= 0) span = rowSpanOfRows(rows, Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex))
@@ -8178,7 +8578,7 @@ window.__ModuleLoader__.load({
 
     /* DiffBlock's own 16-line cap would REPLACE scrolling with a fold button;
        this panel keeps the old contract (render everything, scroll inside the
-       .dig-diff-pane max-height), so the cap is pushed out of reach and the
+       .dgp-diff-pane max-height), so the cap is pushed out of reach and the
        fold labels below are placeholders that never render at this size. */
     const DIFF_BLOCK_MAX_LINES = 1000000
 
@@ -8198,9 +8598,9 @@ window.__ModuleLoader__.load({
 
     function DiffBody(props) {
       const rows = useMemo(() => diffLines(props.patch), [props.patch])
-      if (props.loading === true) return E('div', { className: 'dig-empty' }, props.t('diff.loading'))
-      if (props.binary === true) return E('div', { className: 'dig-empty' }, props.t('diff.binary'))
-      if (rows.length === 0) return E('div', { className: 'dig-empty' }, props.t('diff.empty'))
+      if (props.loading === true) return E('div', { className: 'dgp-empty' }, props.t('diff.loading'))
+      if (props.binary === true) return E('div', { className: 'dgp-empty' }, props.t('diff.binary'))
+      if (rows.length === 0) return E('div', { className: 'dgp-empty' }, props.t('diff.empty'))
       /* Host-rendered first (v0.14): the ui-primitives diff card brings the
          shared toolbar (copy / wrap / language) and the product's diff colors.
          A patch we cannot replay into a hunk (binary, mode-only) or a host
@@ -8211,19 +8611,19 @@ window.__ModuleLoader__.load({
       if (UIPrimitives !== null && typeof UIPrimitives.DiffBlock === 'function') {
         const hunk = patchToHunk(props.patch)
         if (hunk !== null) {
-          return E('div', { className: 'dig-diff-host' },
+          return E('div', { className: 'dgp-diff-host' },
             E(UIPrimitives.DiffBlock, {
               diffs: [hunk],
               labels: diffLabelsOf(props.t),
               maxLines: DIFF_BLOCK_MAX_LINES,
-              className: 'dig-diff-card',
+              className: 'dgp-diff-card',
             }))
         }
       }
-      return E('div', { className: 'dig-diff' }, rows.map((row, index) => E('div', { key: index, className: 'dig-diff-line dig-diff-' + row.kind },
-        E('span', { className: 'dig-diff-gutter' }, row.oldLine === null ? '' : String(row.oldLine)),
-        E('span', { className: 'dig-diff-gutter' }, row.newLine === null ? '' : String(row.newLine)),
-        E('span', { className: 'dig-diff-text' }, row.text === '' ? ' ' : row.text),
+      return E('div', { className: 'dgp-diff' }, rows.map((row, index) => E('div', { key: index, className: 'dgp-diff-line dgp-diff-' + row.kind },
+        E('span', { className: 'dgp-diff-gutter' }, row.oldLine === null ? '' : String(row.oldLine)),
+        E('span', { className: 'dgp-diff-gutter' }, row.newLine === null ? '' : String(row.newLine)),
+        E('span', { className: 'dgp-diff-text' }, row.text === '' ? ' ' : row.text),
       )))
     }
 
@@ -8409,7 +8809,7 @@ window.__ModuleLoader__.load({
 
     /* split/wrap preferences are habits, not tab state — one localStorage
        home, the same policy as the tree folds. */
-    const LINEDIFF_KEY = 'dsh-ide-git.linediff.v1'
+    const LINEDIFF_KEY = 'dsh-git-panel.linediff.v1'
     function readLineDiffPrefs() {
       try {
         const raw = window.localStorage.getItem(LINEDIFF_KEY)
@@ -8434,7 +8834,7 @@ window.__ModuleLoader__.load({
     const SeedIcons = UIPrimitives !== null ? UIPrimitives : {}
 
     function DiffText(props) {
-      return E('span', { className: 'dig-lf-text', 'data-diff-code': props.spans === undefined ? undefined : '' },
+      return E('span', { className: 'dgp-lf-text', 'data-diff-code': props.spans === undefined ? undefined : '' },
         props.spans === undefined || props.spans === null || props.spans.length === 0
           ? (props.text === '' ? ' ' : props.text)
           : props.spans.map((span, at) => E('span', { key: at, style: span.style }, span.text)))
@@ -8444,10 +8844,10 @@ window.__ModuleLoader__.load({
     function UnifiedLine(props) {
       const row = props.row
       const spans = props.spans
-      return E('div', { className: 'dig-lf-line dig-lf-' + row.kind, 'data-diff-line': row.kind },
-        E('span', { className: 'dig-lf-number' }, row.old === undefined ? '' : String(row.old)),
-        E('span', { className: 'dig-lf-number' }, row.new === undefined ? '' : String(row.new)),
-        E('span', { className: 'dig-lf-sign' }, row.kind === 'add' ? '+' : row.kind === 'del' ? '\u2212' : ' '),
+      return E('div', { className: 'dgp-lf-line dgp-lf-' + row.kind, 'data-diff-line': row.kind },
+        E('span', { className: 'dgp-lf-number' }, row.old === undefined ? '' : String(row.old)),
+        E('span', { className: 'dgp-lf-number' }, row.new === undefined ? '' : String(row.new)),
+        E('span', { className: 'dgp-lf-sign' }, row.kind === 'add' ? '+' : row.kind === 'del' ? '\u2212' : ' '),
         /* The guards are load-bearing (FileDiff.tsx uses `highlighted?.new?.get`):
            highlightLines returns undefined for unknown or not-yet-loaded
            grammars, so the first frame (and every plain-text file) renders
@@ -8464,12 +8864,12 @@ window.__ModuleLoader__.load({
       const row = props.row
       const spans = props.spans
       const kind = row.left !== undefined && row.left.kind === 'del' ? 'del' : row.right !== undefined && row.right.kind === 'add' ? 'add' : 'context'
-      return E('div', { className: 'dig-lf-splitLine', 'data-diff-line': kind },
-        E('span', { className: 'dig-lf-cell ' + (row.left === undefined ? 'dig-lf-empty' : 'dig-lf-' + row.left.kind) },
-          E('span', { className: 'dig-lf-number' }, row.left === undefined ? '' : String(row.left.no)),
+      return E('div', { className: 'dgp-lf-splitLine', 'data-diff-line': kind },
+        E('span', { className: 'dgp-lf-cell ' + (row.left === undefined ? 'dgp-lf-empty' : 'dgp-lf-' + row.left.kind) },
+          E('span', { className: 'dgp-lf-number' }, row.left === undefined ? '' : String(row.left.no)),
           E(DiffText, { text: row.left === undefined ? '' : row.left.text, spans: row.left === undefined || spans.old === undefined ? undefined : spans.old.get(row.left.no) })),
-        E('span', { className: 'dig-lf-cell ' + (row.right === undefined ? 'dig-lf-empty' : 'dig-lf-' + row.right.kind) },
-          E('span', { className: 'dig-lf-number' }, row.right === undefined ? '' : String(row.right.no)),
+        E('span', { className: 'dgp-lf-cell ' + (row.right === undefined ? 'dgp-lf-empty' : 'dgp-lf-' + row.right.kind) },
+          E('span', { className: 'dgp-lf-number' }, row.right === undefined ? '' : String(row.right.no)),
           E(DiffText, { text: row.right === undefined ? '' : row.right.text, spans: row.right === undefined || spans.new === undefined ? undefined : spans.new.get(row.right.no) })))
     }
 
@@ -8495,23 +8895,23 @@ window.__ModuleLoader__.load({
           offsets.current[side === 'left' ? 'right' : 'left'][key] = other[axis]
         }
       }
-      return E('div', { className: 'dig-lf-columns' },
+      return E('div', { className: 'dgp-lf-columns' },
         ['left', 'right'].map((side) => E('div', {
           key: side,
-          className: 'dig-lf-column',
+          className: 'dgp-lf-column',
           'data-diff-side': side,
           ref: side === 'left' ? leftRef : rightRef,
           onScroll: follow(side),
-        }, paired.map((hunk, position) => E('section', { key: position, className: 'dig-lf-hunk' },
-          E('div', { className: 'dig-lf-hunkHeader', 'data-diff-hunk-header': '' }, hunk.header),
+        }, paired.map((hunk, position) => E('section', { key: position, className: 'dgp-lf-hunk' },
+          E('div', { className: 'dgp-lf-hunkHeader', 'data-diff-hunk-header': '' }, hunk.header),
           hunk.rows.map((row, at) => {
             const cell = row[side]
             const spans = cell === undefined ? undefined : highlights[position][side === 'left' ? 'old' : 'new']
             return E('div', {
               key: at,
-              className: 'dig-lf-sideLine ' + (cell === undefined ? 'dig-lf-empty' : 'dig-lf-' + cell.kind),
+              className: 'dgp-lf-sideLine ' + (cell === undefined ? 'dgp-lf-empty' : 'dgp-lf-' + cell.kind),
             },
-              E('span', { className: 'dig-lf-number' }, cell === undefined ? '' : String(cell.no)),
+              E('span', { className: 'dgp-lf-number' }, cell === undefined ? '' : String(cell.no)),
               E(DiffText, { text: cell === undefined ? '' : cell.text, spans: cell === undefined || spans === undefined ? undefined : spans.get(cell.no) }))
           }))))))
     }
@@ -8521,7 +8921,7 @@ window.__ModuleLoader__.load({
     function LineDiffTool(props) {
       const inner = E('button', {
         type: 'button',
-        className: 'dig-lf-tool',
+        className: 'dgp-lf-tool',
         'aria-pressed': props.pressed,
         'aria-label': props.label,
         'data-review-tool': props.tool,
@@ -8558,17 +8958,17 @@ window.__ModuleLoader__.load({
       const oneSided = hasAdditions !== hasDeletions
       const split = prefs.split === true && oneSided !== true
       const wrap = prefs.wrap === true
-      if (props.loading === true) return E('div', { className: 'dig-lf-root' }, E('p', { className: 'dig-lf-status', role: 'status' }, t('diff.loading')))
-      if (file === undefined) return E('div', { className: 'dig-lf-root' }, E('p', { className: 'dig-lf-status' }, t('diff.empty')))
+      if (props.loading === true) return E('div', { className: 'dgp-lf-root' }, E('p', { className: 'dgp-lf-status', role: 'status' }, t('diff.loading')))
+      if (file === undefined) return E('div', { className: 'dgp-lf-root' }, E('p', { className: 'dgp-lf-status' }, t('diff.empty')))
       /* header: selector + counts + tools (ReviewTab anatomy) */
       const counts = file.binary === true
-        ? E('span', { className: 'dig-lf-label' }, t('diff.binary'))
-        : E('span', { className: 'dig-lf-counts' },
-            E('span', { className: 'dig-lf-added' }, fill(t('lf.added'), { count: String(file.adds) })),
-            E('span', { className: 'dig-lf-deleted' }, fill(t('lf.deleted'), { count: String(file.dels) })))
+        ? E('span', { className: 'dgp-lf-label' }, t('diff.binary'))
+        : E('span', { className: 'dgp-lf-counts' },
+            E('span', { className: 'dgp-lf-added' }, fill(t('lf.added'), { count: String(file.adds) })),
+            E('span', { className: 'dgp-lf-deleted' }, fill(t('lf.deleted'), { count: String(file.dels) })))
       const selectorButton = E('button', {
         type: 'button',
-        className: 'dig-lf-selectorButton',
+        className: 'dgp-lf-selectorButton',
         'aria-haspopup': 'menu',
         'aria-expanded': menuOpen,
         'aria-label': t('lf.selectFile'),
@@ -8581,13 +8981,13 @@ window.__ModuleLoader__.load({
       const selector = files.length > 1
         ? (SeedMenu === null
             ? E('select', {
-                className: 'dig-lf-selectorFallback',
+                className: 'dgp-lf-selectorFallback',
                 value: String(index),
                 'aria-label': t('lf.selectFile'),
                 onChange: (event) => { setActive(Number(event.target.value)) },
               }, files.map((entry, at) => E('option', { key: at, value: String(at) }, entry.path + '  +' + String(entry.adds) + ' -' + String(entry.dels))))
             : E(SeedMenu, {
-                className: 'dig-lf-selector',
+                className: 'dgp-lf-selector',
                 open: menuOpen,
                 autoFocus: true,
                 portal: true,
@@ -8597,26 +8997,26 @@ window.__ModuleLoader__.load({
                 anchor: selectorButton,
                 items: files.map((entry, at) => ({
                   id: String(at),
-                  label: E('span', { className: 'dig-lf-item' },
-                    E('span', { className: 'dig-lf-itemPath' }, entry.path),
-                    E('span', { className: 'dig-lf-itemCounts' },
-                      E('span', { className: 'dig-lf-added' }, fill(t('lf.added'), { count: String(entry.adds) })),
-                      E('span', { className: 'dig-lf-deleted' }, fill(t('lf.deleted'), { count: String(entry.dels) })))),
+                  label: E('span', { className: 'dgp-lf-item' },
+                    E('span', { className: 'dgp-lf-itemPath' }, entry.path),
+                    E('span', { className: 'dgp-lf-itemCounts' },
+                      E('span', { className: 'dgp-lf-added' }, fill(t('lf.added'), { count: String(entry.adds) })),
+                      E('span', { className: 'dgp-lf-deleted' }, fill(t('lf.deleted'), { count: String(entry.dels) })))),
                 })),
                 selectedId: String(index),
                 onSelect: (id) => { setActive(Number(id)); setMenuOpen(false) },
               }))
-        : E('span', { className: 'dig-lf-selectorStatic', title: file.path },
+        : E('span', { className: 'dgp-lf-selectorStatic', title: file.path },
             SeedPathLabel === null ? file.path : E(SeedPathLabel, { path: file.path }))
-      return E('div', { className: 'dig-lf-root' },
-        E('div', { className: 'dig-lf-header' },
+      return E('div', { className: 'dgp-lf-root' },
+        E('div', { className: 'dgp-lf-header' },
           selector,
           counts,
-          E('span', { className: 'dig-lf-tools' },
+          E('span', { className: 'dgp-lf-tools' },
             E(LineDiffTool, {
               tool: 'split', pressed: split, label: t(split === true ? 'lf.unified' : 'lf.split'),
               onClick: () => { setPrefs((now) => Object.assign({}, now, { split: now.split !== true })) },
-            }, SeedIcons.IconCompareSplitOutlineRegular === undefined ? E(Icon, { name: 'split', size: 13 }) : E(SeedIcons.IconCompareSplitOutlineRegular, { className: 'dig-lf-compareIcon' })),
+            }, SeedIcons.IconCompareSplitOutlineRegular === undefined ? E(Icon, { name: 'split', size: 13 }) : E(SeedIcons.IconCompareSplitOutlineRegular, { className: 'dgp-lf-compareIcon' })),
             E(LineDiffTool, {
               tool: 'wrap', pressed: wrap, label: t(wrap === true ? 'lf.nowrap' : 'lf.wrap'),
               onClick: () => { setPrefs((now) => Object.assign({}, now, { wrap: now.wrap !== true })) },
@@ -8629,17 +9029,17 @@ window.__ModuleLoader__.load({
             }, SeedIcons.IconInspectOutlineRegular === undefined ? E(Icon, { name: 'file', size: 13 }) : E(SeedIcons.IconInspectOutlineRegular)),
           )),
         file.binary === true
-          ? E('p', { className: 'dig-lf-status' }, t('diff.binary'))
-          : E('div', { className: 'dig-lf-body', 'data-review-view': split === true ? 'split' : 'unified', 'data-review-wrap': wrap === true ? '' : undefined },
-              file.created === true ? E('p', { className: 'dig-lf-note' }, t('lf.created')) : null,
-              file.removed === true ? E('p', { className: 'dig-lf-note' }, t('lf.removedFile')) : null,
-              cut.truncated === true ? E('p', { className: 'dig-lf-note' }, fill(t('lf.truncated'), { count: String(LINEDIFF_MAX_LINES) })) : null,
+          ? E('p', { className: 'dgp-lf-status' }, t('diff.binary'))
+          : E('div', { className: 'dgp-lf-body', 'data-review-view': split === true ? 'split' : 'unified', 'data-review-wrap': wrap === true ? '' : undefined },
+              file.created === true ? E('p', { className: 'dgp-lf-note' }, t('lf.created')) : null,
+              file.removed === true ? E('p', { className: 'dgp-lf-note' }, t('lf.removedFile')) : null,
+              cut.truncated === true ? E('p', { className: 'dgp-lf-note' }, fill(t('lf.truncated'), { count: String(LINEDIFF_MAX_LINES) })) : null,
               split === true && wrap !== true
                 ? E(SplitColumns, { hunks: cut.hunks, highlights: cut.maps })
                 : cut.hunks.map((hunk, position) => {
                     const paired = split === true ? splitRows(hunk) : null
-                    return E('section', { key: position, className: 'dig-lf-hunk' },
-                      E('div', { className: 'dig-lf-hunkHeader', 'data-diff-hunk-header': '' }, hunkHeader(hunk)),
+                    return E('section', { key: position, className: 'dgp-lf-hunk' },
+                      E('div', { className: 'dgp-lf-hunkHeader', 'data-diff-hunk-header': '' }, hunkHeader(hunk)),
                       hunkRows(hunk).map((row, at) => split === true
                         ? E(SplitLine, { key: at, row: paired[at], spans: cut.maps[position] })
                         : E(UnifiedLine, { key: at, row: row, spans: cut.maps[position] })))
@@ -8652,14 +9052,14 @@ window.__ModuleLoader__.load({
        folder kind explicitly, since their basename is empty. A host without
        the seed module returns null and the row keeps its status letter as the
        only leading mark. Sizing follows the status letter's box (14px, the
-       .dig-row line height). */
+       .dgp-row line height). */
     function FileTypeGlyph(props) {
       if (UIPrimitives === null || typeof UIPrimitives.FileTypeIcon !== 'function') return null
       const path = typeof props.path === 'string' ? props.path : ''
       if (path === '') return null
       return E(UIPrimitives.FileTypeIcon, path.slice(-1) === '/'
-        ? { kind: 'folder', size: 14, className: 'dig-file-icon' }
-        : { path: path, size: 14, className: 'dig-file-icon' })
+        ? { kind: 'folder', size: 14, className: 'dgp-file-icon' }
+        : { path: path, size: 14, className: 'dgp-file-icon' })
     }
 
     /* ============================== ui kit ============================== */
@@ -8732,7 +9132,7 @@ window.__ModuleLoader__.load({
          (hand-drawn gaps were being re-filled by the round line caps at 15px),
          and its ground rail carries a heavier stroke like the VS Code original. */
       return E('svg', {
-        className: 'dig-icon', width: size, height: size, viewBox: '0 0 16 16',
+        className: 'dgp-icon', width: size, height: size, viewBox: '0 0 16 16',
         fill: 'none', stroke: 'currentColor', strokeWidth: weight,
         strokeLinecap: 'round', strokeLinejoin: 'round',
       }, shape.map((entry, index) => {
@@ -8808,16 +9208,16 @@ window.__ModuleLoader__.load({
         setSub({ items: item.items, flip: flip, top: Math.max(0, itemRect.top - cardRect.top - 4) })
       }
       const renderItem = (item, index, inSub) => {
-        if (item === null) return E('div', { key: 'sep-' + index, className: 'dig-menu-sep' })
+        if (item === null) return E('div', { key: 'sep-' + index, className: 'dgp-menu-sep' })
         const hasSub = inSub !== true && Array.isArray(item.items) === true && item.items.length > 0
         return E('button', {
           key: item.id + '-' + index + (inSub === true ? '-sub' : ''),
           type: 'button',
           title: item.disabled === true && item.reason !== undefined ? item.reason : '',
-          className: 'dig-menu-item'
-            + (item.danger === true ? ' dig-menu-danger' : '')
-            + (item.disabled === true ? ' dig-menu-disabled' : '')
-            + (item.active === true ? ' dig-menu-item-active' : ''),
+          className: 'dgp-menu-item'
+            + (item.danger === true ? ' dgp-menu-danger' : '')
+            + (item.disabled === true ? ' dgp-menu-disabled' : '')
+            + (item.active === true ? ' dgp-menu-item-active' : ''),
           // The row keeps its id on the DOM so a `⋯ 更多` entry is addressable
           // (the rail's own buttons do the same; probes click through either).
           'data-action': item.id === undefined ? undefined : item.id,
@@ -8828,9 +9228,9 @@ window.__ModuleLoader__.load({
             closeRef.current(); item.run(event)
           },
         },
-          item.icon === undefined ? null : E('span', { className: 'dig-menu-icon dig-tone-' + (item.tone === undefined ? 'secondary' : item.tone) }, E(Icon, { name: item.icon, size: 13 })),
-          E('span', { className: 'dig-menu-label' }, item.label),
-          hasSub === true ? E('span', { className: 'dig-menu-chevron' }, E(Icon, { name: 'chevron', size: 10 })) : null)
+          item.icon === undefined ? null : E('span', { className: 'dgp-menu-icon dgp-tone-' + (item.tone === undefined ? 'secondary' : item.tone) }, E(Icon, { name: item.icon, size: 13 })),
+          E('span', { className: 'dgp-menu-label' }, item.label),
+          hasSub === true ? E('span', { className: 'dgp-menu-chevron' }, E(Icon, { name: 'chevron', size: 10 })) : null)
       }
       /* Two boxes on purpose (dsh 0.1.7-rc.2 menu-material contract): the outer
          card owns the material (a `::before` painted on its own layer, so the
@@ -8838,16 +9238,16 @@ window.__ModuleLoader__.load({
          the rows) and the inner box owns the scroll. `data-menu-material` is the
          theme's hook for the dark-menu stroke rebind — the same hook the shipped
          MenuSurface sets. Everything stays a plain `position: absolute` box
-         inside `.dig-root`: panel-internal positioning is an invariant (13), and
+         inside `.dgp-root`: panel-internal positioning is an invariant (13), and
          a portal to `document.body` would land outside the panel. The submenu is
          a second card inside the same wrapper, so outside-click and Escape cover
          both without extra wiring. */
-      return E('div', { className: 'dig-menu-wrap', ref: ref, style: { left: position.left + 'px', top: position.top + 'px' } },
-        E('div', { className: 'dig-menu', ref: cardRef, 'data-menu-material': 'translucent' },
-          E('div', { className: 'dig-menu-scroll' },
+      return E('div', { className: 'dgp-menu-wrap', ref: ref, style: { left: position.left + 'px', top: position.top + 'px' } },
+        E('div', { className: 'dgp-menu', ref: cardRef, 'data-menu-material': 'translucent' },
+          E('div', { className: 'dgp-menu-scroll' },
             props.items.map((item, index) => renderItem(item, index, false)))),
-        sub === null ? null : E('div', { className: 'dig-menu dig-menu-sub', 'data-menu-material': 'translucent', style: sub.flip === true ? { right: '100%', top: sub.top + 'px' } : { left: '100%', top: sub.top + 'px' } },
-          E('div', { className: 'dig-menu-scroll' },
+        sub === null ? null : E('div', { className: 'dgp-menu dgp-menu-sub', 'data-menu-material': 'translucent', style: sub.flip === true ? { right: '100%', top: sub.top + 'px' } : { left: '100%', top: sub.top + 'px' } },
+          E('div', { className: 'dgp-menu-scroll' },
             sub.items.map((item, index) => renderItem(item, index, true)))))
     }
 
@@ -8977,34 +9377,34 @@ window.__ModuleLoader__.load({
       const textRow = (field, labelKey, hintKey, max, multiline) => {
         const accepted = values[field] === undefined || values[field] === null ? '' : String(values[field])
         const shown = Object.prototype.hasOwnProperty.call(textDraft, field) ? textDraft[field] : accepted
-        const id = 'dig-' + field
+        const id = 'dgp-' + field
         const common = {
-          id: id, className: 'dig-input dig-settings-input', value: shown, spellCheck: false,
+          id: id, className: 'dgp-input dgp-settings-input', value: shown, spellCheck: false,
           disabled: readOnly === true, placeholder: t(hintKey), 'aria-labelledby': id + '-label',
           onChange: (event) => setTextDraft((now) => Object.assign({}, now, { [field]: event.target.value })),
           onBlur: () => commitTextField(field, max),
         }
         if (multiline === true) common.onKeyDown = (event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) commitTextField(field, max) }
         else common.onKeyDown = (event) => { if (event.key === 'Enter') commitTextField(field, max) }
-        return E('div', { className: 'dig-settings-text', key: field },
-          E('label', { id: id + '-label', className: 'dig-settings-text-label', htmlFor: id }, t(labelKey)),
+        return E('div', { className: 'dgp-settings-text', key: field },
+          E('label', { id: id + '-label', className: 'dgp-settings-text-label', htmlFor: id }, t(labelKey)),
           multiline === true ? E('textarea', Object.assign({ rows: 3 }, common)) : E('input', Object.assign({ type: 'text' }, common)),
-          shown.length >= max ? E('div', { className: 'dig-settings-error' }, fill(t('settings.commit.tooLong'), { n: String(max) })) : null)
+          shown.length >= max ? E('div', { className: 'dgp-settings-error' }, fill(t('settings.commit.tooLong'), { n: String(max) })) : null)
       }
       /* A picker row: same shell as a text row, but a <select>. `children` are
          the options (built by the caller); a stored value the list does not
          carry is injected as its own option, because a controlled select whose
          value matches no option renders blank and the setting would LOOK lost. */
-      const selectRow = (field, labelKey, value, children, disabled, hint) => {
-        const id = 'dig-' + field
-        return E('div', { className: 'dig-settings-text', key: field },
-          E('label', { id: id + '-label', className: 'dig-settings-text-label', htmlFor: id }, t(labelKey)),
+      const selectRow = (field, labelKey, value, children, disabled, hint, parse) => {
+        const id = 'dgp-' + field
+        return E('div', { className: 'dgp-settings-text', key: field },
+          E('label', { id: id + '-label', className: 'dgp-settings-text-label', htmlFor: id }, t(labelKey)),
           E('select', {
-            id: id, className: 'dig-input dig-settings-input', value: value, disabled: disabled === true,
+            id: id, className: 'dgp-input dgp-settings-input', value: value, disabled: disabled === true,
             'aria-labelledby': id + '-label',
-            onChange: (event) => commitSelectField(field, event.target.value),
+            onChange: (event) => commitSelectField(field, parse === undefined ? event.target.value : parse(event.target.value)),
           }, children),
-          hint === null ? null : E('div', { className: 'dig-settings-subnote' }, hint))
+          hint === null ? null : E('div', { className: 'dgp-settings-subnote' }, hint))
       }
       /* Collapsible sections, HAND-DRAWN. The official disclosure row was ruled
          out the same way the sibling dsh-gitbash-shell ruled it out (v0.38.0 -
@@ -9020,16 +9420,16 @@ window.__ModuleLoader__.load({
       }
       const fold = (titleKey, ...body) => {
         const open = folds[titleKey] === true
-        return E('div', { className: 'dig-fold' },
+        return E('div', { className: 'dgp-fold' },
           E('button', {
             type: 'button',
-            className: 'dig-foldHead',
+            className: 'dgp-foldHead',
             'aria-expanded': open ? 'true' : 'false',
             onClick: () => toggleFold(titleKey),
           },
-            E('span', { className: 'dig-foldChevron' + (open ? ' dig-foldChevronOpen' : ''), 'aria-hidden': 'true' }, '▸'),
-            E('span', { className: 'dig-foldTitle' }, t(titleKey))),
-          open ? E('div', { className: 'dig-stack' }, body) : null)
+            E('span', { className: 'dgp-foldChevron' + (open ? ' dgp-foldChevronOpen' : ''), 'aria-hidden': 'true' }, '▸'),
+            E('span', { className: 'dgp-foldTitle' }, t(titleKey))),
+          open ? E('div', { className: 'dgp-stack' }, body) : null)
       }
       const flush = () => {
         pendingFlush.current = null
@@ -9092,20 +9492,20 @@ window.__ModuleLoader__.load({
          seat, a flat page card on the plugin-page seat. Title + description
          come from the settings.card.* dictionary keys (every locale). */
       const pageView = props.view === 'page'
-      const cardHead = E('span', { className: 'dig-card-head-text' },
-        E('span', { className: 'dig-card-name' }, t('settings.card.title')),
-        E('span', { className: 'dig-card-desc' }, t('settings.card.desc')))
+      const cardHead = E('span', { className: 'dgp-card-head-text' },
+        E('span', { className: 'dgp-card-name' }, t('settings.card.title')),
+        E('span', { className: 'dgp-card-desc' }, t('settings.card.desc')))
       const wrapCard = (body) => {
-        if (pageView) return E('div', { className: 'dig-card dig-card-page' },
-          E('div', { className: 'dig-card-header dig-card-header-flat' }, cardHead), body)
-        return E('li', { className: 'dig-card' + (openCard ? ' dig-card-open' : '') },
+        if (pageView) return E('div', { className: 'dgp-card dgp-card-page' },
+          E('div', { className: 'dgp-card-header dgp-card-header-flat' }, cardHead), body)
+        return E('li', { className: 'dgp-card' + (openCard ? ' dgp-card-open' : '') },
           E('button', {
             type: 'button',
-            className: 'dig-card-header',
+            className: 'dgp-card-header',
             'aria-expanded': openCard,
             onClick: () => setOpenCard(!openCard),
           }, cardHead,
-            E('span', { className: 'dig-card-chevron' + (openCard ? ' dig-card-chevron-open' : '') },
+            E('span', { className: 'dgp-card-chevron' + (openCard ? ' dgp-card-chevron-open' : '') },
               E(Icon, { name: 'chevron', size: 12 }))),
           openCard ? body : null)
       }
@@ -9169,8 +9569,8 @@ window.__ModuleLoader__.load({
       // Switches exist only where they can actually write: a host that does not
       // serve this entry's settings gets a sentence instead of dead controls.
       if (status !== 'ready' || values === null) {
-        return wrapCard(E('div', { className: 'dig-settings dig-card-body', 'data-settings-status': status },
-          E('div', { className: 'dig-settings-note' }, t('settings.rail.unavailable'))))
+        return wrapCard(E('div', { className: 'dgp-settings dgp-card-body', 'data-settings-status': status },
+          E('div', { className: 'dgp-settings-note' }, t('settings.rail.unavailable'))))
       }
       const config = railConfigOfValues(values)
       /* A toggle is a host round trip, so the switch would snap back to the old
@@ -9184,17 +9584,17 @@ window.__ModuleLoader__.load({
       /* A host that serves the document but refuses writes gets disabled switches
          and a sentence, not controls that silently do nothing. */
       const readOnly = snapshot.writable !== true
-      return wrapCard(E('div', { className: 'dig-settings dig-card-body', 'data-settings-status': status, 'data-settings-readonly': readOnly === true ? 'true' : 'false' },
-        E('div', { className: readOnly === true ? 'dig-settings-note' : 'dig-settings-note dig-settings-note-hidden', 'data-settings-readonly-note': '' }, t('settings.rail.readonly')),
-        note === '' ? null : E('div', { className: 'dig-settings-error', 'data-settings-error': '' }, note),
+      return wrapCard(E('div', { className: 'dgp-settings dgp-card-body', 'data-settings-status': status, 'data-settings-readonly': readOnly === true ? 'true' : 'false' },
+        E('div', { className: readOnly === true ? 'dgp-settings-note' : 'dgp-settings-note dgp-settings-note-hidden', 'data-settings-readonly-note': '' }, t('settings.rail.readonly')),
+        note === '' ? null : E('div', { className: 'dgp-settings-error', 'data-settings-error': '' }, note),
         /* Three collapsible sections, one per functional domain — the header
            rows are what a collapsed card shows. The readonly/error notes stay
            OUTSIDE them: they are status, not settings, and must stay visible.
            Section 1 carries its own hint (it describes exactly this list). */
         fold('settings.rail.title',
-        E('div', { className: 'dig-settings-hint' }, t('settings.rail.hint')),
-        E('div', { className: 'dig-settings-list' }, RAIL_SPECS.map((spec) => {
-          const inputId = 'dig-rail-' + spec.id
+        E('div', { className: 'dgp-settings-hint' }, t('settings.rail.hint')),
+        E('div', { className: 'dgp-settings-list' }, RAIL_SPECS.map((spec) => {
+          const inputId = 'dgp-rail-' + spec.id
           const visible = shown(spec)
           /* A row, not a <label>: a label that both carries htmlFor and wraps its
              own input toggles twice per click (once for the input, once for the
@@ -9228,18 +9628,18 @@ window.__ModuleLoader__.load({
             bump()
             scheduleFlush()
           }
-          return E('div', { key: spec.id, className: 'dig-settings-row', 'data-rail-action': spec.id },
+          return E('div', { key: spec.id, className: 'dgp-settings-row', 'data-rail-action': spec.id },
             E('input', {
               id: inputId,
               type: 'checkbox',
-              className: 'dig-settings-check',
+              className: 'dgp-settings-check',
               'aria-labelledby': inputId + '-label',
               checked: visible,
               disabled: readOnly === true,
               onChange: toggle,
             }),
-            E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: spec.icon, size: 13 })),
-            E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t(spec.key)))
+            E('span', { className: 'dgp-settings-glyph' }, E(Icon, { name: spec.icon, size: 13 })),
+            E('span', { id: inputId + '-label', className: 'dgp-settings-label', onClick: toggle }, t(spec.key)))
         }))),
         /* Section 2 — placement (issue #8): one switch, the same optimistic-write
            contract the rail rows keep. The conversation tab registers/unregisters
@@ -9247,7 +9647,7 @@ window.__ModuleLoader__.load({
         fold('settings.placement.title',
         (() => {
           const field = 'conversationTab'
-          const inputId = 'dig-placement-' + field
+          const inputId = 'dgp-placement-' + field
           const shown = Object.prototype.hasOwnProperty.call(intent.current, field)
             ? intent.current[field] === true
             : values[field] !== false
@@ -9269,20 +9669,20 @@ window.__ModuleLoader__.load({
             bump()
             scheduleFlush()
           }
-          return E('div', { key: field },
-            E('div', { className: 'dig-settings-row', 'data-placement-row': field },
+          return E('div', { className: 'dgp-settings-field', key: field },
+            E('div', { className: 'dgp-settings-row', 'data-placement-row': field },
               E('input', {
                 id: inputId,
                 type: 'checkbox',
-                className: 'dig-settings-check',
+                className: 'dgp-settings-check',
                 'aria-labelledby': inputId + '-label',
                 checked: shown,
                 disabled: readOnly === true,
                 onChange: toggle,
               }),
-              E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: 'commit', size: 13 })),
-              E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t('settings.placement.tab'))),
-            E('div', { className: 'dig-settings-subnote' }, t('settings.placement.tabHint')))
+              E('span', { className: 'dgp-settings-glyph' }, E(Icon, { name: 'commit', size: 13 })),
+              E('span', { id: inputId + '-label', className: 'dgp-settings-label', onClick: toggle }, t('settings.placement.tab'))),
+            E('div', { className: 'dgp-settings-subnote' }, (shown ? t('settings.state.on') : t('settings.state.off')) + t('settings.placement.tabHint')))
         })(),
         (() => {
           /* Immersive mode (issue #8 round 3): the conversation seat's
@@ -9291,7 +9691,7 @@ window.__ModuleLoader__.load({
              re-renders the seat live (the ConversationPanel subscribes to the
              same config). */
           const field = 'immersive'
-          const inputId = 'dig-placement-' + field
+          const inputId = 'dgp-placement-' + field
           const shown = Object.prototype.hasOwnProperty.call(intent.current, field)
             ? intent.current[field] === true
             : values[field] !== false
@@ -9313,20 +9713,20 @@ window.__ModuleLoader__.load({
             bump()
             scheduleFlush()
           }
-          return E('div', { key: field },
-            E('div', { className: 'dig-settings-row', 'data-placement-row': field },
+          return E('div', { className: 'dgp-settings-field', key: field },
+            E('div', { className: 'dgp-settings-row', 'data-placement-row': field },
               E('input', {
                 id: inputId,
                 type: 'checkbox',
-                className: 'dig-settings-check',
+                className: 'dgp-settings-check',
                 'aria-labelledby': inputId + '-label',
                 checked: shown,
                 disabled: readOnly === true,
                 onChange: toggle,
               }),
-              E('span', { className: 'dig-settings-glyph' }, E(Icon, { name: 'commit', size: 13 })),
-              E('span', { id: inputId + '-label', className: 'dig-settings-label', onClick: toggle }, t('settings.placement.immersive'))),
-            E('div', { className: 'dig-settings-subnote' }, t('settings.placement.immersiveHint')))
+              E('span', { className: 'dgp-settings-glyph' }, E(Icon, { name: 'commit', size: 13 })),
+              E('span', { id: inputId + '-label', className: 'dgp-settings-label', onClick: toggle }, t('settings.placement.immersive'))),
+            E('div', { className: 'dgp-settings-subnote' }, (shown ? t('settings.state.on') : t('settings.state.off')) + t('settings.placement.immersiveHint')))
         })()),
         /* Section 3 — the AI commit message (issue #6): model, reasoning and the
            prompt template. */
@@ -9376,25 +9776,142 @@ window.__ModuleLoader__.load({
           }
           return textRow('commitReasoning', 'settings.commit.reasoning', 'settings.commit.reasoningHint', 60, false)
         })(),
-        textRow('commitPrompt', 'settings.commit.prompt', 'settings.commit.promptHint', 2000, true))))
+        textRow('commitPrompt', 'settings.commit.prompt', 'settings.commit.promptHint', 2000, true),
+        /* Section 4 — repository list & cache: the persistent row summaries and
+           the scan pool's width. The switch rides the same optimistic-write
+           contract as the placement rows; the concurrency is a fixed ladder —
+           every ladder value is host-valid, nothing to clamp by hand, and the
+           ladder brackets the measured curve (2/4/6/8 plus the extremes). */
+        fold('settings.list.title',
+        (() => {
+          const field = 'rowPaintCache'
+          const inputId = 'dgp-list-' + field
+          const shown = Object.prototype.hasOwnProperty.call(intent.current, field)
+            ? intent.current[field] === true
+            : values[field] !== false
+          const toggle = (event) => {
+            if (readOnly === true) { setNote(t('settings.rail.readonly')); return }
+            const fromControl = event !== undefined && event !== null && event.target !== null
+              && event.target !== undefined && typeof event.target.checked === 'boolean'
+              ? event.target.checked
+              : null
+            const wanted = fromControl !== null
+              ? fromControl
+              : (Object.prototype.hasOwnProperty.call(intent.current, field)
+                ? intent.current[field] !== true
+                : values[field] !== false) !== true
+            intent.current[field] = wanted
+            dirty.current.set(field, wanted)
+            setPending((now) => Object.assign({}, now, { [field]: wanted }))
+            setNote('')
+            bump()
+            scheduleFlush()
+          }
+          return E('div', { className: 'dgp-settings-field', key: field },
+            E('div', { className: 'dgp-settings-row', 'data-list-row': field },
+              E('input', {
+                id: inputId,
+                type: 'checkbox',
+                className: 'dgp-settings-check',
+                'aria-labelledby': inputId + '-label',
+                checked: shown,
+                disabled: readOnly === true,
+                onChange: toggle,
+              }),
+              E('span', { className: 'dgp-settings-glyph' }, E(Icon, { name: 'folder', size: 13 })),
+              E('span', { id: inputId + '-label', className: 'dgp-settings-label', onClick: toggle }, t('settings.list.rowCache'))),
+            E('div', { className: 'dgp-settings-subnote' }, (shown ? t('settings.state.on') : t('settings.state.off')) + t('settings.list.rowCacheHint')))
+        })(),
+        (() => {
+          const accepted = values.listScanSlots === undefined || values.listScanSlots === null
+            ? 4 : Number(values.listScanSlots)
+          const current = Number.isFinite(accepted)
+            ? String(Math.max(1, Math.min(16, Math.round(accepted))))
+            : '4'
+          /* A just-picked rung stays shown for the host round trip (the same
+             draft contract the text rows keep), then the accepted doc wins. */
+          const shown = Object.prototype.hasOwnProperty.call(textDraft, 'listScanSlots') && Number.isFinite(Number(textDraft.listScanSlots))
+            ? String(textDraft.listScanSlots)
+            : current
+          return selectRow('listScanSlots', 'settings.list.scanSlots', shown,
+            [1, 2, 4, 6, 8, 12, 16].map((n) => E('option', { key: 'slots-' + n, value: String(n) }, String(n))),
+            readOnly, t('settings.list.scanSlotsHint'), Number)
+        })(),
+        (() => {
+          /* Status auto-update cadence: the same ladder the strategy comment
+             names; a hand-written config value outside the ladder keeps its own
+             rung (the commitModel "kept" option pattern) instead of lying. */
+          const LADDER = [0, 5000, 12000, 30000, 60000]
+          const raw = values.autoRefreshMs === undefined || values.autoRefreshMs === null ? 12000 : Number(values.autoRefreshMs)
+          const current = Number.isFinite(raw) ? Math.max(0, Math.min(600000, Math.round(raw))) : 12000
+          const shown = Object.prototype.hasOwnProperty.call(textDraft, 'autoRefreshMs') && Number.isFinite(Number(textDraft.autoRefreshMs))
+            ? String(textDraft.autoRefreshMs)
+            : String(current)
+          return selectRow('autoRefreshMs', 'settings.list.autoRefresh', shown,
+            LADDER.map((ms) => E('option', { key: 'ms-' + ms, value: String(ms) },
+              ms === 0 ? t('settings.list.autoRefreshOff') : fill(t('settings.list.autoRefreshEvery'), { n: Math.round(ms / 1000) })))
+              .concat(LADDER.indexOf(current) < 0
+                ? [E('option', { key: 'ms-kept', value: String(current) }, String(current) + ' ms')]
+                : []),
+            readOnly, t('settings.list.autoRefreshHint'), Number)
+        })(),
+        (() => {
+          const field = 'refreshOnFocus'
+          const inputId = 'dgp-list-' + field
+          const shown = Object.prototype.hasOwnProperty.call(intent.current, field)
+            ? intent.current[field] === true
+            : values[field] !== false
+          const toggle = (event) => {
+            if (readOnly === true) { setNote(t('settings.rail.readonly')); return }
+            const fromControl = event !== undefined && event !== null && event.target !== null
+              && event.target !== undefined && typeof event.target.checked === 'boolean'
+              ? event.target.checked
+              : null
+            const wanted = fromControl !== null
+              ? fromControl
+              : (Object.prototype.hasOwnProperty.call(intent.current, field)
+                ? intent.current[field] !== true
+                : values[field] !== false) !== true
+            intent.current[field] = wanted
+            dirty.current.set(field, wanted)
+            setPending((now) => Object.assign({}, now, { [field]: wanted }))
+            setNote('')
+            bump()
+            scheduleFlush()
+          }
+          return E('div', { className: 'dgp-settings-field', key: field },
+            E('div', { className: 'dgp-settings-row', 'data-list-row': field },
+              E('input', {
+                id: inputId,
+                type: 'checkbox',
+                className: 'dgp-settings-check',
+                'aria-labelledby': inputId + '-label',
+                checked: shown,
+                disabled: readOnly === true,
+                onChange: toggle,
+              }),
+              E('span', { className: 'dgp-settings-glyph' }, E(Icon, { name: 'refresh', size: 13 })),
+              E('span', { id: inputId + '-label', className: 'dgp-settings-label', onClick: toggle }, t('settings.list.refreshOnFocus'))),
+            E('div', { className: 'dgp-settings-subnote' }, (shown ? t('settings.state.on') : t('settings.state.off')) + t('settings.list.refreshOnFocusHint')))
+        })()))))
     }
 
     function RailSettings(props) {
       const t = props.t
       const [dragId, setDragId] = useState(null)
       return E('div', {
-        className: 'dig-overlay',
+        className: 'dgp-overlay',
         onMouseDown: (event) => { if (event.target === event.currentTarget) props.onClose() },
       },
-        E('div', { className: 'dig-dialog dig-dialog-wide' },
-          E('div', { className: 'dig-dialog-title' }, t('rail.settings')),
-          E('div', { className: 'dig-dialog-text' }, t('rail.settingsHint')),
-          E('div', { className: 'dig-rail-list' },
+        E('div', { className: 'dgp-dialog dgp-dialog-wide' },
+          E('div', { className: 'dgp-dialog-title' }, t('rail.settings')),
+          E('div', { className: 'dgp-dialog-text' }, t('rail.settingsHint')),
+          E('div', { className: 'dgp-rail-list' },
             props.items.map((item, index) => E('div', {
               key: item.id,
-              className: 'dig-rail-item'
-                + (item.hidden === true ? ' dig-rail-item-off' : '')
-                + (dragId === item.id ? ' dig-rail-item-drag' : ''),
+              className: 'dgp-rail-item'
+                + (item.hidden === true ? ' dgp-rail-item-off' : '')
+                + (dragId === item.id ? ' dgp-rail-item-drag' : ''),
               draggable: true,
               onDragStart: (event) => {
                 setDragId(item.id)
@@ -9407,26 +9924,26 @@ window.__ModuleLoader__.load({
               onDragOver: (event) => { event.preventDefault() },
               onDrop: (event) => { event.preventDefault(); props.onDrop(dragId, item.id); setDragId(null) },
             },
-              E('span', { className: 'dig-rail-grip' }, E(Icon, { name: 'grip', size: 12 })),
-              E('span', { className: 'dig-rail-item-icon dig-tone-' + item.tone }, E(Icon, { name: item.icon, size: 13 })),
-              E('span', { className: 'dig-rail-item-label' }, item.label),
+              E('span', { className: 'dgp-rail-grip' }, E(Icon, { name: 'grip', size: 12 })),
+              E('span', { className: 'dgp-rail-item-icon dgp-tone-' + item.tone }, E(Icon, { name: item.icon, size: 13 })),
+              E('span', { className: 'dgp-rail-item-label' }, item.label),
               E('button', {
-                type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('rail.up'),
+                type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small', title: t('rail.up'),
                 disabled: index === 0, onClick: () => props.onMove(item.id, -1),
               }, E(Icon, { name: 'up', size: 12 })),
               E('button', {
-                type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('rail.down'),
+                type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small', title: t('rail.down'),
                 disabled: index === props.items.length - 1, onClick: () => props.onMove(item.id, 1),
               }, E(Icon, { name: 'down', size: 12 })),
               E('button', {
                 type: 'button',
-                className: 'dig-icon-btn dig-icon-btn-small' + (item.hidden === true ? '' : ' dig-icon-btn-active'),
+                className: 'dgp-icon-btn dgp-icon-btn-small' + (item.hidden === true ? '' : ' dgp-icon-btn-active'),
                 title: item.hidden === true ? t('rail.show') : t('rail.hide'),
                 onClick: () => props.onToggle(item.id),
               }, E(Icon, { name: item.hidden === true ? 'eyeOff' : 'eye', size: 13 }))))),
-          E('div', { className: 'dig-dialog-actions' },
-            E('button', { type: 'button', className: 'dig-btn', onClick: props.onReset }, t('rail.reset')),
-            E('button', { type: 'button', className: 'dig-btn dig-btn-primary', onClick: props.onClose }, t('confirm.ok')))))
+          E('div', { className: 'dgp-dialog-actions' },
+            E('button', { type: 'button', className: 'dgp-btn', onClick: props.onReset }, t('rail.reset')),
+            E('button', { type: 'button', className: 'dgp-btn dgp-btn-primary', onClick: props.onClose }, t('confirm.ok')))))
     }
 
     /* Transient result chips, anchored inside the panel (see ContextMenu for why
@@ -9434,17 +9951,17 @@ window.__ModuleLoader__.load({
        'undo', which is how a real delete is still reversible. */
     function ToastStack(props) {
       if (props.toasts.length === 0) return null
-      return E('div', { className: 'dig-toasts' }, props.toasts.map((item) => E('div', {
+      return E('div', { className: 'dgp-toasts' }, props.toasts.map((item) => E('div', {
         key: item.id,
-        className: 'dig-toast' + (item.tone === undefined ? '' : ' dig-toast-' + item.tone),
+        className: 'dgp-toast' + (item.tone === undefined ? '' : ' dgp-toast-' + item.tone),
       },
-        E('span', { className: 'dig-toast-icon' }, E(Icon, { name: item.icon === undefined ? 'check' : item.icon, size: 13 })),
-        E('span', { className: 'dig-toast-text', title: item.text }, item.text),
+        E('span', { className: 'dgp-toast-icon' }, E(Icon, { name: item.icon === undefined ? 'check' : item.icon, size: 13 })),
+        E('span', { className: 'dgp-toast-text', title: item.text }, item.text),
         item.actionLabel === undefined ? null : E('button', {
-          type: 'button', className: 'dig-toast-action', onClick: () => item.onAction(),
+          type: 'button', className: 'dgp-toast-action', onClick: () => item.onAction(),
         }, item.actionLabel),
         E('button', {
-          type: 'button', className: 'dig-icon-btn dig-icon-btn-small',
+          type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small',
           title: props.t('toast.close'), onClick: () => item.onClose(),
         }, E(Icon, { name: 'close', size: 11 })))))
     }
@@ -9454,11 +9971,11 @@ window.__ModuleLoader__.load({
       const ref = useRef(null)
       useEffect(() => { if (ref.current !== null) ref.current.focus() }, [])
       const submit = () => { if (value.trim() !== '') props.onSubmit(value.trim()) }
-      return E('div', { className: 'dig-overlay' },
-        E('div', { className: 'dig-dialog' },
-          E('div', { className: 'dig-dialog-title' }, props.title),
+      return E('div', { className: 'dgp-overlay' },
+        E('div', { className: 'dgp-dialog' },
+          E('div', { className: 'dgp-dialog-title' }, props.title),
           E('input', {
-            ref: ref, className: 'dig-input', value: value, spellCheck: false,
+            ref: ref, className: 'dgp-input', value: value, spellCheck: false,
             placeholder: props.placeholder === undefined ? '' : props.placeholder,
             onChange: (event) => setValue(event.target.value),
             onKeyDown: (event) => {
@@ -9466,9 +9983,9 @@ window.__ModuleLoader__.load({
               if (event.key === 'Escape') { event.preventDefault(); props.onCancel() }
             },
           }),
-          E('div', { className: 'dig-dialog-actions' },
-            E('button', { type: 'button', className: 'dig-btn', onClick: props.onCancel }, props.cancelLabel),
-            E('button', { type: 'button', className: 'dig-btn dig-btn-primary', onClick: submit }, props.okLabel))))
+          E('div', { className: 'dgp-dialog-actions' },
+            E('button', { type: 'button', className: 'dgp-btn', onClick: props.onCancel }, props.cancelLabel),
+            E('button', { type: 'button', className: 'dgp-btn dgp-btn-primary', onClick: submit }, props.okLabel))))
     }
 
     /* VS Code's "Clone...": a URL plus an absolute target path. Two inputs in
@@ -9485,22 +10002,22 @@ window.__ModuleLoader__.load({
         if (event.key === 'Enter') { event.preventDefault(); submit() }
         if (event.key === 'Escape') { event.preventDefault(); props.onCancel() }
       }
-      return E('div', { className: 'dig-overlay' },
-        E('div', { className: 'dig-dialog' },
-          E('div', { className: 'dig-dialog-title' }, props.title),
+      return E('div', { className: 'dgp-overlay' },
+        E('div', { className: 'dgp-dialog' },
+          E('div', { className: 'dgp-dialog-title' }, props.title),
           E('input', {
-            ref: ref, className: 'dig-input', value: url, spellCheck: false,
+            ref: ref, className: 'dgp-input', value: url, spellCheck: false,
             placeholder: props.urlPlaceholder === undefined ? '' : props.urlPlaceholder,
             onChange: (event) => setUrl(event.target.value), onKeyDown: onKey,
           }),
           E('input', {
-            className: 'dig-input', value: dir, spellCheck: false,
+            className: 'dgp-input', value: dir, spellCheck: false,
             placeholder: props.dirPlaceholder === undefined ? '' : props.dirPlaceholder,
             onChange: (event) => setDir(event.target.value), onKeyDown: onKey,
           }),
-          E('div', { className: 'dig-dialog-actions' },
-            E('button', { type: 'button', className: 'dig-btn', onClick: props.onCancel }, props.cancelLabel),
-            E('button', { type: 'button', className: 'dig-btn dig-btn-primary', disabled: ready === false, onClick: submit }, props.okLabel))))
+          E('div', { className: 'dgp-dialog-actions' },
+            E('button', { type: 'button', className: 'dgp-btn', onClick: props.onCancel }, props.cancelLabel),
+            E('button', { type: 'button', className: 'dgp-btn dgp-btn-primary', disabled: ready === false, onClick: submit }, props.okLabel))))
     }
 
     /* VS Code's "Git output" view (showOutput): the tail of the host's git-run
@@ -9511,26 +10028,26 @@ window.__ModuleLoader__.load({
       const t = props.t
       const ref = useRef(null)
       useEffect(() => { if (ref.current !== null) ref.current.scrollTop = ref.current.scrollHeight }, [props.entries])
-      return E('div', { className: 'dig-gitlog' },
-        E('div', { className: 'dig-gitlog-head' },
-          E('span', { className: 'dig-gitlog-title' }, t('gitLog.title')),
-          E('span', { className: 'dig-topbar-spacer' }),
-          E('button', { type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('toolbar.refresh'), onClick: props.onRefresh }, E(Icon, { name: 'refresh', size: 13 })),
-          E('button', { type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('confirm.cancel'), onClick: props.onClose }, E(Icon, { name: 'collapse', size: 13 }))),
+      return E('div', { className: 'dgp-gitlog' },
+        E('div', { className: 'dgp-gitlog-head' },
+          E('span', { className: 'dgp-gitlog-title' }, t('gitLog.title')),
+          E('span', { className: 'dgp-topbar-spacer' }),
+          E('button', { type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small', title: t('toolbar.refresh'), onClick: props.onRefresh }, E(Icon, { name: 'refresh', size: 13 })),
+          E('button', { type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small', title: t('confirm.cancel'), onClick: props.onClose }, E(Icon, { name: 'collapse', size: 13 }))),
         props.entries.length === 0
-          ? E('div', { className: 'dig-gitlog-empty' }, t('gitLog.empty'))
-          : E('div', { className: 'dig-gitlog-body', ref: ref },
+          ? E('div', { className: 'dgp-gitlog-empty' }, t('gitLog.empty'))
+          : E('div', { className: 'dgp-gitlog-body', ref: ref },
             props.entries.map((entry, index) => E('div', {
               key: index,
-              className: 'dig-gitlog-row' + (String(entry.code) === '0' ? '' : ' dig-gitlog-row-bad'),
+              className: 'dgp-gitlog-row' + (String(entry.code) === '0' ? '' : ' dgp-gitlog-row-bad'),
             },
-              E('div', { className: 'dig-gitlog-meta' },
-                E('span', { className: 'dig-gitlog-code' }, String(entry.code)),
-                E('span', { className: 'dig-gitlog-ms' }, String(entry.ms) + 'ms'),
-                E('span', { className: 'dig-gitlog-at' }, String(entry.at)),
-                E('span', { className: 'dig-gitlog-argv' }, String(entry.argv))),
+              E('div', { className: 'dgp-gitlog-meta' },
+                E('span', { className: 'dgp-gitlog-code' }, String(entry.code)),
+                E('span', { className: 'dgp-gitlog-ms' }, String(entry.ms) + 'ms'),
+                E('span', { className: 'dgp-gitlog-at' }, String(entry.at)),
+                E('span', { className: 'dgp-gitlog-argv' }, String(entry.argv))),
               entry.out === '' && entry.err === '' ? null
-                : E('pre', { className: 'dig-gitlog-pre' }, String(entry.err) === '' ? String(entry.out) : String(entry.out) + '\n' + String(entry.err))))))
+                : E('pre', { className: 'dgp-gitlog-pre' }, String(entry.err) === '' ? String(entry.out) : String(entry.out) + '\n' + String(entry.err))))))
     }
 
     /* A destructive confirm: focus starts on Cancel (never on the red button), Enter
@@ -9543,27 +10060,27 @@ window.__ModuleLoader__.load({
       const needText = typeof props.requireText === 'string' && props.requireText !== ''
       const matches = needText === false || typed.trim() === props.requireText
       useEffect(() => { if (cancelRef.current !== null) cancelRef.current.focus() }, [])
-      return E('div', { className: 'dig-overlay' },
-        E('div', { className: 'dig-dialog' },
-          E('div', { className: 'dig-dialog-title' }, props.title),
-          E('div', { className: 'dig-dialog-text' }, props.text),
+      return E('div', { className: 'dgp-overlay' },
+        E('div', { className: 'dgp-dialog' },
+          E('div', { className: 'dgp-dialog-title' }, props.title),
+          E('div', { className: 'dgp-dialog-text' }, props.text),
           needText === false ? null : E('input', {
-            className: 'dig-input', value: typed, spellCheck: false,
+            className: 'dgp-input', value: typed, spellCheck: false,
             placeholder: fill(t('confirm.typeName'), { name: props.requireText }),
             onChange: (event) => setTyped(event.target.value),
             onKeyDown: (event) => { if (event.key === 'Enter' && matches === true) props.onConfirm() },
           }),
-          E('div', { className: 'dig-dialog-actions' },
-            E('button', { ref: cancelRef, type: 'button', className: 'dig-btn', onClick: props.onCancel }, props.cancelLabel),
-            E('button', { type: 'button', className: 'dig-btn dig-btn-danger', disabled: matches === false, onClick: props.onConfirm }, props.okLabel))))
+          E('div', { className: 'dgp-dialog-actions' },
+            E('button', { ref: cancelRef, type: 'button', className: 'dgp-btn', onClick: props.onCancel }, props.cancelLabel),
+            E('button', { type: 'button', className: 'dgp-btn dgp-btn-danger', disabled: matches === false, onClick: props.onConfirm }, props.okLabel))))
     }
 
     function Segmented(props) {
-      return E('div', { className: 'dig-seg' },
+      return E('div', { className: 'dgp-seg' },
         props.items.map((item) => E('button', {
           key: item.id,
           type: 'button',
-          className: 'dig-seg-item',
+          className: 'dgp-seg-item',
           'data-active': props.value === item.id ? 'true' : 'false',
           onClick: () => props.onChange(item.id),
         }, item.label)))
@@ -9620,8 +10137,8 @@ window.__ModuleLoader__.load({
       }
       const label = fill(props.t('pane.resize'), { name: props.t(props.nameKey) })
       return E('div', {
-        className: 'dig-gutter ' + (props.vertical === true ? 'dig-gutter-v' : 'dig-gutter-h')
-          + (props.active === true ? ' dig-gutter-active' : ''),
+        className: 'dgp-gutter ' + (props.vertical === true ? 'dgp-gutter-v' : 'dgp-gutter-h')
+          + (props.active === true ? ' dgp-gutter-active' : ''),
         role: 'separator',
         tabIndex: 0,
         'aria-orientation': props.vertical === true ? 'vertical' : 'horizontal',
@@ -9648,29 +10165,29 @@ window.__ModuleLoader__.load({
          to look like the final answer. Loading shows loading; "not found" only
          shows once the scan came back empty. */
       if (props.loading === true) {
-        return E('span', { className: 'dig-repo-static' },
+        return E('span', { className: 'dgp-repo-static' },
           E(Icon, { name: 'folder', size: 12 }),
-          E('span', { className: 'dig-repo-name' }, t('status.loading')))
+          E('span', { className: 'dgp-repo-name' }, t('status.loading')))
       }
       if (props.repos.length <= 1) {
         const only = props.repos.length === 1 ? props.repos[0] : null
-        return E('span', { className: 'dig-repo-static', title: only === null ? '' : only.path },
+        return E('span', { className: 'dgp-repo-static', title: only === null ? '' : only.path },
           E(Icon, { name: 'folder', size: 12 }),
-          E('span', { className: 'dig-repo-name' }, only === null ? t('repo.empty') : only.name))
+          E('span', { className: 'dgp-repo-name' }, only === null ? t('repo.empty') : only.name))
       }
       /* The switcher is a button over a panel-internal menu, not a native
          <select>: the OS-drawn popup ignores the panel theme entirely (light
          system colours over a dark translucent panel) and was unreadable. */
       let current = null
       for (const repo of props.repos) { if (repo.path === props.value) { current = repo; break } }
-      return E('span', { className: 'dig-select-wrap', title: current === null ? t('repo.switch') : current.path },
+      return E('span', { className: 'dgp-select-wrap', title: current === null ? t('repo.switch') : current.path },
         E(Icon, { name: 'folder', size: 12 }),
         E('button', {
           type: 'button',
-          className: 'dig-select dig-select-btn dig-select-repo',
+          className: 'dgp-select dgp-select-btn dgp-select-repo',
           onClick: props.onOpenMenu,
         },
-          E('span', { className: 'dig-repo-name' },
+          E('span', { className: 'dgp-repo-name' },
             current === null ? t('repo.pick') : current.name + (current.branch === null || current.branch === undefined ? '' : ' · ' + current.branch)),
           E(Icon, { name: 'chevron', size: 12 })))
     }
@@ -9686,31 +10203,31 @@ window.__ModuleLoader__.load({
       const label = props.label + ': ' + (current === undefined ? '' : current.label)
       return E('button', {
         type: 'button',
-        className: 'dig-filter-select' + (props.value === '' ? '' : ' dig-filter-on'),
+        className: 'dgp-filter-select' + (props.value === '' ? '' : ' dgp-filter-on'),
         title: props.hint === undefined ? label : props.hint,
         onClick: (event) => { if (props.onOpenMenu !== undefined) props.onOpenMenu(event, options) },
       },
-        E('span', { className: 'dig-filter-label' }, label),
+        E('span', { className: 'dgp-filter-label' }, label),
         E(Icon, { name: 'chevron', size: 11 }))
     }
 
     function RepoPicker(props) {
       const t = props.t
       const repos = props.repos
-      return E('div', { className: 'dig-picker' },
-        E('div', { className: 'dig-picker-title' }, repos.length === 0 ? t('repo.empty') : t('repo.pick')),
-        E('div', { className: 'dig-picker-sub' }, props.cwd),
+      return E('div', { className: 'dgp-picker' },
+        E('div', { className: 'dgp-picker-title' }, repos.length === 0 ? t('repo.empty') : t('repo.pick')),
+        E('div', { className: 'dgp-picker-sub' }, props.cwd),
         repos.map((repo) => E('button', {
           key: repo.path,
           type: 'button',
-          className: 'dig-picker-row',
+          className: 'dgp-picker-row',
           onClick: () => props.onPick(repo.path),
         },
-          E('span', { className: 'dig-picker-icon' }, E(Icon, { name: 'folder', size: 13 })),
-          E('span', { className: 'dig-picker-name' }, repo.name),
-          repo.branch === null || repo.branch === undefined ? null : E('span', { className: 'dig-badge' }, repo.branch),
-          E('span', { className: 'dig-picker-kind' }, repo.kind === 'workspace' ? t('repo.workspace') : t('repo.nested')),
-          E('span', { className: 'dig-picker-path' }, repo.path))))
+          E('span', { className: 'dgp-picker-icon' }, E(Icon, { name: 'folder', size: 13 })),
+          E('span', { className: 'dgp-picker-name' }, repo.name),
+          repo.branch === null || repo.branch === undefined ? null : E('span', { className: 'dgp-badge' }, repo.branch),
+          E('span', { className: 'dgp-picker-kind' }, repo.kind === 'workspace' ? t('repo.workspace') : t('repo.nested')),
+          E('span', { className: 'dgp-picker-path' }, repo.path))))
     }
 
     /* ============================== branch tree ============================== */
@@ -9729,24 +10246,24 @@ window.__ModuleLoader__.load({
       // long list must not do that (reported on v0.3.7). Double-click checks
       // out, right-click has the whole menu.
       return E('div', {
-        className: 'dig-row dig-row-' + kind + (props.selected === true ? ' dig-row-selected' : ''),
+        className: 'dgp-row dgp-row-' + kind + (props.selected === true ? ' dgp-row-selected' : ''),
         style: { paddingLeft: (BRANCH_INDENT_BASE + (props.depth === undefined ? 0 : props.depth) * BRANCH_INDENT_STEP) + 'px' },
         title: where + ' · ' + t('branches.pickHint'),
         onClick: (event) => props.onPick(event, entry, props.selKey),
         onDoubleClick: () => props.onCheckout(entry),
         onContextMenu: (event) => { event.preventDefault(); props.onMenu(event, entry) },
       },
-        E('span', { className: 'dig-row-icon dig-tone-' + tone }, E(Icon, { name: glyph, size: 12 })),
-        E('span', { className: 'dig-row-label' }, props.label === undefined ? entry.name : props.label),
+        E('span', { className: 'dgp-row-icon dgp-tone-' + tone }, E(Icon, { name: glyph, size: 12 })),
+        E('span', { className: 'dgp-row-label' }, props.label === undefined ? entry.name : props.label),
         // A bare 'W' told nobody anything (reported right after the section counts):
         // it means this branch is checked out in ANOTHER working tree, which is why
         // git refuses to check it out here. An icon plus a spelled-out tooltip says so.
         entry.worktree === null || entry.worktree === undefined ? null : E('span', {
-          className: 'dig-badge dig-badge-muted dig-badge-worktree',
+          className: 'dgp-badge dgp-badge-muted dgp-badge-worktree',
           title: t('branches.worktree') + ': ' + entry.worktree,
         }, E(Icon, { name: 'folder', size: 10 })),
-        entry.ahead > 0 ? E('span', { className: 'dig-badge dig-badge-ahead' }, '↑' + entry.ahead) : null,
-        entry.behind > 0 ? E('span', { className: 'dig-badge dig-badge-behind' }, '↓' + entry.behind) : null)
+        entry.ahead > 0 ? E('span', { className: 'dgp-badge dgp-badge-ahead' }, '↑' + entry.ahead) : null,
+        entry.behind > 0 ? E('span', { className: 'dgp-badge dgp-badge-behind' }, '↓' + entry.behind) : null)
     }
 
     function BranchTree(props) {
@@ -9869,30 +10386,30 @@ window.__ModuleLoader__.load({
           const id = prefix === '' ? name : prefix + '/' + name
           const open = foldedFolders[id] !== true
           const child = node.folders.get(name)
-          out.push(E('div', { className: 'dig-branch-folder', key: 'dir:' + id },
+          out.push(E('div', { className: 'dgp-branch-folder', key: 'dir:' + id },
             E('button', {
-              type: 'button', className: 'dig-folder-head',
+              type: 'button', className: 'dgp-folder-head',
               style: { paddingLeft: (BRANCH_INDENT_BASE + depth * BRANCH_INDENT_STEP) + 'px' },
               onClick: () => setFoldedFolders((previous) => Object.assign({}, previous, { [id]: previous[id] !== true })),
             },
-              E('span', { className: 'dig-chevron' + (open ? ' dig-chevron-open' : '') }, E(Icon, { name: 'chevron', size: 10 })),
-              E('span', { className: 'dig-folder-name' }, name),
-              E('span', { className: 'dig-count' }, String(countLeaves(child)))),
+              E('span', { className: 'dgp-chevron' + (open ? ' dgp-chevron-open' : '') }, E(Icon, { name: 'chevron', size: 10 })),
+              E('span', { className: 'dgp-folder-name' }, name),
+              E('span', { className: 'dgp-count' }, String(countLeaves(child)))),
             open ? rowsOf(child, id, depth + 1) : null))
         }
         for (const leaf of node.leaves) out.push(branchRow(leaf.entry, leaf.label, depth))
         return out
       }
-      const section = (key, title, entries, decorate, grouped) => E('div', { className: 'dig-section', key: key },
+      const section = (key, title, entries, decorate, grouped) => E('div', { className: 'dgp-section', key: key },
         E('button', {
-          type: 'button', className: 'dig-section-head',
+          type: 'button', className: 'dgp-section-head',
           onClick: () => setCollapsed((previous) => Object.assign({}, previous, { [key]: !previous[key] })),
         },
-          E('span', { className: 'dig-chevron' + (collapsed[key] === true ? '' : ' dig-chevron-open') }, E(Icon, { name: 'chevron', size: 12 })),
+          E('span', { className: 'dgp-chevron' + (collapsed[key] === true ? '' : ' dgp-chevron-open') }, E(Icon, { name: 'chevron', size: 12 })),
           // No count here: a bare digit next to the section name read as another
           // column instead of a total (reported on v0.3.10).
           E('span', null, title)),
-        collapsed[key] === true ? null : E('div', { className: 'dig-section-body' },
+        collapsed[key] === true ? null : E('div', { className: 'dgp-section-body' },
           grouped === true
             ? rowsOf(forestOf(entries.map((entry) => decorate(entry))), '', 0)
             : entries.map((entry) => branchRow(decorate(entry), undefined, 0))))
@@ -9954,21 +10471,21 @@ window.__ModuleLoader__.load({
         if (event.key === 'Escape') setPicks(new Set())
       }
       return E('div', {
-        className: 'dig-tree',
+        className: 'dgp-tree',
         tabIndex: 0,
         onKeyDown: onTreeKeyDown,
         onPointerDownCapture: (event) => {
           if (isTypingTarget(event.target) === false) event.currentTarget.focus({ preventScroll: true })
         },
       },
-        E('div', { className: 'dig-search' },
+        E('div', { className: 'dgp-search' },
           E('input', {
-            className: 'dig-input dig-input-compact', value: filter, spellCheck: false,
+            className: 'dgp-input dgp-input-compact', value: filter, spellCheck: false,
             placeholder: t('branches.filter'),
             onChange: (event) => setFilter(event.target.value),
           })),
-        E('div', { className: 'dig-tree-scroll' },
-          E('div', { className: 'dig-section-head dig-section-head-static' }, t('branches.head')),
+        E('div', { className: 'dgp-tree-scroll' },
+          E('div', { className: 'dgp-section-head dgp-section-head-static' }, t('branches.head')),
           favorites.length === 0 ? null : section('favorites', t('branches.favorites'), locals.filter((entry) => favorites.indexOf(entry.name) >= 0), (entry) => entry),
           section('local', t('branches.local'), locals, (entry) => entry, true),
           section('remote', t('branches.remote'), remotes, (entry) => Object.assign({}, entry, { remote: true })),
@@ -9994,7 +10511,7 @@ window.__ModuleLoader__.load({
       const readOnly = props.group === 'ignored'
       const status = readOnly ? 'I' : (raw === '' ? 'M' : raw.charAt(0))
       return E('div', {
-        className: 'dig-row dig-row-file' + (props.selected === true ? ' dig-row-selected' : ''),
+        className: 'dgp-row dgp-row-file' + (props.selected === true ? ' dgp-row-selected' : ''),
         title: item.origPath === undefined ? item.path : item.origPath + ' → ' + item.path,
         /* The click is handled ONE level up (ChangesPanel): plain click still
            opens the diff, Shift/Ctrl+click join or toggle the multi-select. */
@@ -10002,18 +10519,20 @@ window.__ModuleLoader__.load({
         onContextMenu: (event) => { event.preventDefault(); props.onMenu(event, item, props.group) },
       },
         FileTypeGlyph({ path: item.path }),
-        E('span', { className: 'dig-file-status dig-file-status-' + (status === '?' ? 'U' : status) }, status),
+        E('span', { className: 'dgp-file-status dgp-file-status-' + (status === '?' ? 'U' : status) }, status),
         // An ignored DIRECTORY comes back as "dist/" (ls-files --directory), whose
         // basename is empty — show the whole path instead of a blank label.
-        E('span', { className: 'dig-row-label' }, item.path.slice(-1) === '/' ? item.path : baseName(item.path)),
-        E('span', { className: 'dig-row-sub dig-row-dir' }, item.path.slice(-1) === '/' ? '' : dirName(item.path)),
-        item.additions > 0 ? E('span', { className: 'dig-stat-add' }, '+' + item.additions) : null,
-        item.deletions > 0 ? E('span', { className: 'dig-stat-del' }, '-' + item.deletions) : null,
+        E('span', { className: 'dgp-row-label' }, item.path.slice(-1) === '/' ? item.path : baseName(item.path)),
+        E('span', { className: 'dgp-row-sub dgp-row-dir' }, item.path.slice(-1) === '/' ? '' : dirName(item.path)),
+        item.additions > 0 ? E('span', { className: 'dgp-stat-add' }, '+' + item.additions) : null,
+        item.deletions > 0 ? E('span', { className: 'dgp-stat-del' }, '-' + item.deletions) : null,
         readOnly ? null : (props.group === 'staged'
-          ? E('button', { type: 'button', className: 'dig-mini', title: t('action.unstage'), onClick: (event) => { event.stopPropagation(); props.onUnstage(item) } }, E(Icon, { name: 'minus', size: 12 }))
-          : E('button', { type: 'button', className: 'dig-mini', title: t('action.stage'), onClick: (event) => { event.stopPropagation(); props.onStage(item) } }, E(Icon, { name: 'plus', size: 12 }))),
-        readOnly ? null : E('button', { type: 'button', className: 'dig-mini', title: t('action.discard'), onClick: (event) => { event.stopPropagation(); props.onDiscard(item, props.group) } }, E(Icon, { name: 'undo', size: 12 })))
-    }, (prev, next) => prev.item === next.item && prev.group === next.group && prev.t === next.t && prev.selected === next.selected)
+          ? E('button', { type: 'button', className: 'dgp-mini', title: t('action.unstage'), disabled: props.busy === true, onClick: (event) => { event.stopPropagation(); props.onUnstage(item) } }, E(Icon, { name: 'minus', size: 12 }))
+          : E('button', { type: 'button', className: 'dgp-mini', title: t('action.stage'), disabled: props.busy === true, onClick: (event) => { event.stopPropagation(); props.onStage(item) } }, E(Icon, { name: 'plus', size: 12 }))),
+        readOnly ? null : E('button', { type: 'button', className: 'dgp-mini', title: t('action.discard'), disabled: props.busy === true, onClick: (event) => { event.stopPropagation(); props.onDiscard(item, props.group) } }, E(Icon, { name: 'undo', size: 12 })))
+    }, (prev, next) => prev.item === next.item && prev.group === next.group && prev.t === next.t && prev.selected === next.selected && prev.busy === next.busy &&
+      prev.onRowClick === next.onRowClick && prev.onStage === next.onStage && prev.onUnstage === next.onUnstage &&
+      prev.onDiscard === next.onDiscard && prev.onDiff === next.onDiff && prev.onMenu === next.onMenu)
 
     function ChangesPanel(props) {
       const t = props.t
@@ -10021,14 +10540,15 @@ window.__ModuleLoader__.load({
       const [message, setMessage] = useState('')
       const [amend, setAmend] = useState(false)
       const [collapsed, setCollapsed] = useState(() => {
+        if (props.isolated === true) return false
         const stored = readTreeState()
         return stored !== null && typeof stored === 'object' && stored.changesCollapsed === true
       })
       /* Same remount-survival as the branch sections (v0.13.1). */
       useEffect(() => {
         const stored = readTreeState()
-        writeTreeState(Object.assign({}, stored, { changesCollapsed: collapsed === true }))
-      }, [collapsed])
+        if (props.isolated !== true) writeTreeState(Object.assign({}, stored, { changesCollapsed: collapsed === true }))
+      }, [collapsed, props.isolated])
       /* AI-written message (issue #6). The draft is kept so the write can be
          undone, and an existing draft is never overwritten without a word. */
       const [aiBusy, setAiBusy] = useState(false)
@@ -10115,7 +10635,7 @@ window.__ModuleLoader__.load({
          heights + the prefix-sum offsets turn a pixel span back into the
          row-index span (the same windowStart binary search the window uses),
          so the drag never needs the DOM rows to exist. The marquee box itself
-         is a viewport-anchored absolute div inside .dig-changes (invariant 13:
+         is a viewport-anchored absolute div inside .dgp-changes (invariant 13:
          never position:fixed inside the workbench's contain:layout). ---- */
       const marqueeKeysAt = (contentTop, contentBottom) => {
         const items = changeItemsRef.current
@@ -10240,15 +10760,20 @@ window.__ModuleLoader__.load({
           setAiBusy(false)
         }
       }
-      const submit = (push) => {
-        if (message.trim() === '' || props.busy === true) return false
-        props.onCommit(message, amend, push === true)
-        setMessage('')
-        setAmend(false)
-        return true
+      const submitting = useRef(false)
+      const submit = async (push) => {
+        if (message.trim() === '' || props.busy === true || submitting.current === true) return false
+        submitting.current = true
+        const draft = message
+        try {
+          if (await props.onCommit(draft, amend, push === true) === false) return false
+          setMessage((current) => current === draft ? '' : current)
+          setAmend(false)
+          return true
+        } finally { submitting.current = false }
       }
       const entryRow = (key, item) => E(ChangeRow, {
-        key: key + ':' + item.path, item: item, group: key, t: t,
+        key: key + ':' + item.path, item: item, group: key, t: t, busy: props.busy,
         selected: selection.has(key + ':' + item.path) === true,
         onRowClick: handleRowClick,
         onStage: props.onStage, onUnstage: props.onUnstage, onDiscard: props.onDiscard, onDiff: props.onDiff, onMenu: props.onChangeMenu,
@@ -10274,10 +10799,10 @@ window.__ModuleLoader__.load({
       const changesViewport = useViewportBox(changesScrollRef)
       const changeItems = useMemo(() => {
         const out = []
-        const groupHead = (key, title, entries) => E('div', { className: 'dig-group-head' },
+        const groupHead = (key, title, entries) => E('div', { className: 'dgp-group-head' },
           E('span', null, title),
-          key === 'staged' ? E('button', { type: 'button', className: 'dig-link', onClick: () => props.onUnstageAll() }, t('changes.unstageAll')) : null,
-          key === 'unstaged' || key === 'untracked' ? E('button', { type: 'button', className: 'dig-link', onClick: () => props.onStageAll(entries) }, t('changes.stageAll')) : null)
+          key === 'staged' ? E('button', { type: 'button', className: 'dgp-link', onClick: () => props.onUnstageAll() }, t('changes.unstageAll')) : null,
+          key === 'unstaged' || key === 'untracked' ? E('button', { type: 'button', className: 'dgp-link', onClick: () => props.onStageAll(entries) }, t('changes.stageAll')) : null)
         const emitRows = (key, entries) => {
           const sorted = sortedOf(entries)
           if (groupBy !== 'dir') {
@@ -10297,12 +10822,12 @@ window.__ModuleLoader__.load({
             out.push({
               kind: 'folder', key: 'folder:' + id, h: ITEM_HEIGHTS.folder,
               node: E('button', {
-                type: 'button', className: 'dig-folder-head',
+                type: 'button', className: 'dgp-folder-head',
                 onClick: () => setFoldedDirs((previous) => Object.assign({}, previous, { [id]: previous[id] !== true })),
               },
-                E('span', { className: 'dig-chevron' + (open ? ' dig-chevron-open' : '') }, E(Icon, { name: 'chevron', size: 10 })),
-                E('span', { className: 'dig-folder-name' }, name),
-                E('span', { className: 'dig-count' }, String(list.length))),
+                E('span', { className: 'dgp-chevron' + (open ? ' dgp-chevron-open' : '') }, E(Icon, { name: 'chevron', size: 10 })),
+                E('span', { className: 'dgp-folder-name' }, name),
+                E('span', { className: 'dgp-count' }, String(list.length))),
             })
             if (open === true) for (const item of list) out.push({ kind: 'row', key: key + ':' + item.path, h: ITEM_HEIGHTS.row, node: entryRow(key, item) })
           }
@@ -10318,7 +10843,7 @@ window.__ModuleLoader__.load({
         emitGroup('untracked', fill(t('counts.untracked'), { n: untracked.length }), untracked)
         emitGroup('ignored', fill(t('counts.ignored'), { n: ignored.length }), ignored)
         return out
-      }, [conflicted, staged, unstaged, untracked, ignored, groupBy, foldedDirs, sortKey, t, selection, handleRowClick, props.onUnstageAll, props.onStageAll])
+      }, [conflicted, staged, unstaged, untracked, ignored, groupBy, foldedDirs, sortKey, t, selection, handleRowClick, props.onUnstageAll, props.onStageAll, props.onStage, props.onUnstage, props.onDiscard, props.onDiff, props.onChangeMenu, props.busy])
       const changeOffsets = useMemo(() => {
         const sums = [0]
         for (const item of changeItems) sums.push(sums[sums.length - 1] + item.h)
@@ -10346,9 +10871,9 @@ window.__ModuleLoader__.load({
         onCancel: () => setAiAsk(false),
       })
       const composer = props.compact === true
-        ? E('div', { className: 'dig-commit-box dig-commit-box-compact' },
+        ? E('div', { className: 'dgp-commit-box dgp-commit-box-compact' },
             E('input', {
-              className: 'dig-input dig-input-compact', value: message, spellCheck: false,
+              className: 'dgp-input dgp-input-compact', value: message, spellCheck: false,
               placeholder: t('changes.commitPlaceholder'),
               onChange: (event) => setMessage(event.target.value),
               onKeyDown: (event) => {
@@ -10356,64 +10881,64 @@ window.__ModuleLoader__.load({
               },
             }),
             E('button', {
-              type: 'button', className: 'dig-btn dig-btn-small dig-btn-ai',
+              type: 'button', className: 'dgp-btn dgp-btn-small dgp-btn-ai',
               disabled: aiBusy === true || props.busy === true,
               title: t('changes.aiQuota'),
               onClick: () => { if (message.trim() === '') void aiRun(); else setAiAsk(true) },
             }, aiBusy === true ? t('changes.aiBusy') : t('changes.aiWrite')),
             E('button', {
-              type: 'button', className: 'dig-btn dig-btn-primary dig-btn-small',
+              type: 'button', className: 'dgp-btn dgp-btn-primary dgp-btn-small',
               disabled: message.trim() === '' || props.busy === true,
               onClick: () => { submit(false) },
             }, t('changes.commit')),
-            E('span', { className: 'dig-commit-ai-hint dig-commit-ai-hint-block' }, t('changes.aiQuota')))
-        : E('div', { className: 'dig-commit-box' },
+            E('span', { className: 'dgp-commit-ai-hint dgp-commit-ai-hint-block' }, t('changes.aiQuota')))
+        : E('div', { className: 'dgp-commit-box' },
             E('textarea', {
-              className: 'dig-textarea', value: message, spellCheck: false,
+              className: 'dgp-textarea', value: message, spellCheck: false,
               placeholder: t('changes.commitPlaceholder'),
               onChange: (event) => setMessage(event.target.value),
               onKeyDown: (event) => {
                 if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); submit() }
               },
             }),
-            E('div', { className: 'dig-commit-ai' },
+            E('div', { className: 'dgp-commit-ai' },
               E('button', {
-                type: 'button', className: 'dig-btn dig-btn-small dig-btn-ai',
+                type: 'button', className: 'dgp-btn dgp-btn-small dgp-btn-ai',
                 disabled: aiBusy === true || props.busy === true,
                 onClick: () => { if (message.trim() === '') void aiRun(); else setAiAsk(true) },
               }, aiBusy === true ? t('changes.aiBusy') : t('changes.aiWrite')),
-              E('span', { className: 'dig-commit-ai-hint' }, t('changes.aiQuota')),
+              E('span', { className: 'dgp-commit-ai-hint' }, t('changes.aiQuota')),
               aiUndo === null ? null : E('button', {
-                type: 'button', className: 'dig-link',
+                type: 'button', className: 'dgp-link',
                 onClick: () => { setMessage(aiUndo); setAiUndo(null); setAiNote(null) },
               }, t('changes.aiUndo'))),
-            aiNote === null ? null : E('div', { className: 'dig-commit-ai-note', 'data-ai-note': '' }, aiNote),
-            E('div', { className: 'dig-commit-actions' },
-              E('label', { className: 'dig-check' },
+            aiNote === null ? null : E('div', { className: 'dgp-commit-ai-note', 'data-ai-note': '' }, aiNote),
+            E('div', { className: 'dgp-commit-actions' },
+              E('label', { className: 'dgp-check' },
                 E('input', { type: 'checkbox', checked: amend, onChange: (event) => setAmend(event.target.checked) }),
                 E('span', null, t('changes.amend'))),
               E('button', {
-                type: 'button', className: 'dig-btn dig-btn-primary',
+                type: 'button', className: 'dgp-btn dgp-btn-primary',
                 disabled: message.trim() === '' || props.busy === true,
                 onClick: () => { submit(false) },
               }, t('changes.commit')),
               E('button', {
-                type: 'button', className: 'dig-btn',
+                type: 'button', className: 'dgp-btn',
                 disabled: message.trim() === '' || props.busy === true,
                 onClick: () => { submit(true) },
               }, t('changes.commitAndPush'))))
       // Folding hides the FILE LIST only. The commit box is the panel's primary
       // action and used to vanish together with the list, leaving an empty pane
       // with no way to commit anything (reported on v0.3.5).
-      const head = props.hideHeader === true ? null : E('div', { className: 'dig-section-head dig-changes-head' },
+      const head = props.hideHeader === true ? null : E('div', { className: 'dgp-section-head dgp-changes-head' },
         E('button', {
-          type: 'button', className: 'dig-section-toggle',
+          type: 'button', className: 'dgp-section-toggle',
           onClick: () => setCollapsed((value) => !value),
         },
-          E('span', { className: 'dig-chevron' + (collapsed ? '' : ' dig-chevron-open') }, E(Icon, { name: 'chevron', size: 12 })),
+          E('span', { className: 'dgp-chevron' + (collapsed ? '' : ' dgp-chevron-open') }, E(Icon, { name: 'chevron', size: 12 })),
           E('span', null, t('changes.title')),
-          E('span', { className: 'dig-count' }, String(total))),
-        E('span', { className: 'dig-topbar-spacer' }),
+          E('span', { className: 'dgp-count' }, String(total))),
+        E('span', { className: 'dgp-topbar-spacer' }),
         /* The four header toggles (group-by / expand / fold / ignored) moved
            INTO the ⋯ menu (v0.16.1, user request): one consistent entry point
            instead of five small buttons, same actions, same state. */
@@ -10421,27 +10946,27 @@ window.__ModuleLoader__.load({
           type: 'button',
           /* Same 24px footprint and 15px glyph as the rail buttons above — the
              user asked for one consistent size across both rows. */
-          className: 'dig-icon-btn',
+          className: 'dgp-icon-btn',
           title: t('toolbar.more'),
           'data-action': 'more',
           onClick: (event) => props.onMoreMenu(event),
         }, E(Icon, { name: 'more', size: 18 })))
       /* The selection action bar: visible only while a multi-select exists, so
          the mouse-only path (no right-click, no keyboard) keeps full power. */
-      const selectionBar = selection.size === 0 ? null : E('div', { className: 'dig-selection-bar' },
-        E('span', { className: 'dig-selection-count' }, fill(t('selection.count'), { n: selection.size })),
-        props.onBulkStage === undefined ? null : E('button', { type: 'button', className: 'dig-link', onClick: () => props.onBulkStage() }, t('action.stage')),
-        props.onBulkUnstage === undefined ? null : E('button', { type: 'button', className: 'dig-link', onClick: () => props.onBulkUnstage() }, t('action.unstage')),
-        props.onBulkDiscard === undefined ? null : E('button', { type: 'button', className: 'dig-link dig-link-danger', onClick: () => props.onBulkDiscard() }, t('action.discard')),
-        props.onCopySelection === undefined ? null : E('button', { type: 'button', className: 'dig-link', onClick: () => props.onCopySelection() }, t('selection.copyPaths')),
-        E('button', { type: 'button', className: 'dig-link', onClick: () => setSelection(new Set()) }, t('selection.clear')))
-      return E('div', { className: 'dig-changes' },
+      const selectionBar = selection.size === 0 ? null : E('div', { className: 'dgp-selection-bar' },
+        E('span', { className: 'dgp-selection-count' }, fill(t('selection.count'), { n: selection.size })),
+        props.onBulkStage === undefined ? null : E('button', { type: 'button', className: 'dgp-link', onClick: () => props.onBulkStage() }, t('action.stage')),
+        props.onBulkUnstage === undefined ? null : E('button', { type: 'button', className: 'dgp-link', onClick: () => props.onBulkUnstage() }, t('action.unstage')),
+        props.onBulkDiscard === undefined ? null : E('button', { type: 'button', className: 'dgp-link dgp-link-danger', onClick: () => props.onBulkDiscard() }, t('action.discard')),
+        props.onCopySelection === undefined ? null : E('button', { type: 'button', className: 'dgp-link', onClick: () => props.onCopySelection() }, t('selection.copyPaths')),
+        E('button', { type: 'button', className: 'dgp-link', onClick: () => setSelection(new Set()) }, t('selection.clear')))
+      return E('div', { className: 'dgp-changes' },
         aiConfirmDialog,
         head,
         selectionBar,
-        E('div', { className: 'dig-changes-body' },
+        E('div', { className: 'dgp-changes-body' },
           E('div', {
-            className: 'dig-changes-list', ref: changesScrollRef,
+            className: 'dgp-changes-list', ref: changesScrollRef,
             /* Focusable list: the keyboard shortcuts (Ctrl+C / Del / Ctrl+A /
                Esc) land on whichever list currently holds focus. */
             tabIndex: 0,
@@ -10455,7 +10980,7 @@ window.__ModuleLoader__.load({
             },
           },
             collapsed ? null : [
-              total === 0 && ignored.length === 0 ? E('div', { className: 'dig-empty', key: 'empty' }, t('changes.empty')) : null,
+              total === 0 && ignored.length === 0 ? E('div', { className: 'dgp-empty', key: 'empty' }, t('changes.empty')) : null,
               /* Windowed slice: spacers above/below stand in for the unmounted
                  rows (fixed heights, see ITEM_HEIGHTS). */
               winFirst > 0 ? E('div', { key: 'pad-top', style: { height: String(changeOffsets[winFirst]) + 'px' } }) : null,
@@ -10464,7 +10989,7 @@ window.__ModuleLoader__.load({
             ]),
           composer),
         marquee === null ? null : E('div', {
-          className: 'dig-marquee',
+          className: 'dgp-marquee',
           style: { left: marquee.x + 'px', top: marquee.y + 'px', width: marquee.w + 'px', height: marquee.h + 'px' },
         }))
     }
@@ -10502,7 +11027,7 @@ window.__ModuleLoader__.load({
        Row heights are FIXED constants — the CSS pins each row kind to an exact
        height, so a prefix-sum index plus binary search locates the first
        visible item without measuring. */
-    const HISTORY_ROW_H = 28 /* .dig-commit: height 26 + 2×1px padding */
+    const HISTORY_ROW_H = 28 /* .dgp-commit: height 26 + 2×1px padding */
     const ITEM_HEIGHTS = { group: 21, folder: 16, row: 24 }
     const WINDOW_OVERSCAN = 6
 
@@ -10589,22 +11114,22 @@ window.__ModuleLoader__.load({
            hovered row's lane into data-hover-lane, and generated CSS dims every
            graph stroke whose data-lane differs — zero React re-renders. */
         'data-lane': String(props.row.lane),
-        className: 'dig-commit' + (props.selected === true ? ' dig-commit-selected' : ''),
+        className: 'dgp-commit' + (props.selected === true ? ' dgp-commit-selected' : ''),
         /* Modifier handling lives in HistoryList (it owns the rendered row
            order the Shift-range walks); a plain click still opens the detail. */
         onClick: (event) => props.onRowClick(event, commit),
         onContextMenu: (event) => { event.preventDefault(); props.onMenu(event, commit) },
       },
-        E('span', { className: 'dig-commit-date', title: shortDate(commit.date) }, relativeTime(commit.date)),
-        E('span', { className: 'dig-commit-author', title: commit.author }, commit.author),
+        E('span', { className: 'dgp-commit-date', title: shortDate(commit.date) }, relativeTime(commit.date)),
+        E('span', { className: 'dgp-commit-author', title: commit.author }, commit.author),
         E(GraphCell, { row: props.row, height: 26 }),
         shown.map((decoration, index) => E('span', {
           key: decoration.kind + ':' + decoration.name + ':' + index,
-          className: 'dig-ref dig-ref-' + decoration.kind,
+          className: 'dgp-ref dgp-ref-' + decoration.kind,
           title: badgeTitle(decoration),
         }, refLabel(decoration))),
         hidden > 0 || folded.length > 0 ? E('span', {
-          className: 'dig-ref dig-ref-more',
+          className: 'dgp-ref dgp-ref-more',
           title: kept.slice(3).map(refLabel).concat(folded.map((name) => '⇅ ' + name)).join('\n'),
           onClick: (event) => {
             event.stopPropagation()
@@ -10624,8 +11149,8 @@ window.__ModuleLoader__.load({
             props.openMenuAt(event, entries)
           },
         }, '+' + String(hidden + folded.length)) : null,
-        E('span', { className: 'dig-commit-subject', title: commit.subject }, commit.subject),
-        E('span', { className: 'dig-commit-fill' }))
+        E('span', { className: 'dgp-commit-subject', title: commit.subject }, commit.subject),
+        E('span', { className: 'dgp-commit-fill' }))
     }, (prev, next) => prev.commit === next.commit && prev.row === next.row && prev.selected === next.selected && prev.t === next.t)
 
     function sinceThreshold(key) {
@@ -10777,9 +11302,9 @@ window.__ModuleLoader__.load({
           })))
         }
         const allOption = { value: '', label: t('filter.all') }
-        const filterBar = props.hideSearch === true ? null : E('div', { className: 'dig-filters' },
+        const filterBar = props.hideSearch === true ? null : E('div', { className: 'dgp-filters' },
         E('input', {
-          className: 'dig-input dig-input-compact dig-filter-text', value: text, spellCheck: false,
+          className: 'dgp-input dgp-input-compact dgp-filter-text', value: text, spellCheck: false,
           placeholder: t('history.filter'),
           onChange: (event) => setText(event.target.value),
         }),
@@ -10803,20 +11328,20 @@ window.__ModuleLoader__.load({
           onOpenMenu: (event, options) => openFilterMenu(event, options, since, setSince),
         }),
         E('form', {
-          className: 'dig-filter-path',
+          className: 'dgp-filter-path',
           onSubmit: (event) => { event.preventDefault(); applyPath(pathDraft.trim()) },
         }, E('input', {
-          className: 'dig-input dig-input-compact', value: pathDraft, spellCheck: false,
+          className: 'dgp-input dgp-input-compact', value: pathDraft, spellCheck: false,
           placeholder: t('filter.pathPlaceholder'),
           onChange: (event) => setPathDraft(event.target.value),
         })),
         E('button', {
-          type: 'button', className: 'dig-icon-btn dig-icon-btn-small',
+          type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small',
           title: order === 'desc' ? t('filter.sortDesc') : t('filter.sortAsc'),
           onClick: () => setOrder(order === 'desc' ? 'asc' : 'desc'),
         }, E(Icon, { name: order === 'desc' ? 'down' : 'up', size: 12 })),
         dirtyFilter ? E('button', {
-          type: 'button', className: 'dig-icon-btn dig-icon-btn-small', title: t('filter.clear'),
+          type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small', title: t('filter.clear'),
           onClick: clearAll,
         }, E(Icon, { name: 'close', size: 12 })) : null)
 
@@ -10827,9 +11352,9 @@ window.__ModuleLoader__.load({
       const winEnd = Math.min(rows.length, winStart + Math.ceil(viewport.viewH / HISTORY_ROW_H) + WINDOW_OVERSCAN * 2)
       const visibleRows = rows.slice(winStart, winEnd)
 
-      return E('div', { className: 'dig-history' }, filterBar,
+      return E('div', { className: 'dgp-history' }, filterBar,
         E('div', {
-          className: 'dig-history-scroll',
+          className: 'dgp-history-scroll',
           ref: historyScrollRef,
           tabIndex: 0,
           onKeyDown: onListKeyDown,
@@ -10842,7 +11367,7 @@ window.__ModuleLoader__.load({
              alternative is re-rendering every row on each hover change. */
           onMouseOver: (event) => {
             const host = event.currentTarget
-            const row = event.target instanceof Element ? event.target.closest('.dig-commit') : null
+            const row = event.target instanceof Element ? event.target.closest('.dgp-commit') : null
             const lane = row === null ? null : row.getAttribute('data-lane')
             if (lane === host.getAttribute('data-hover-lane')) return
             if (lane === null) host.removeAttribute('data-hover-lane')
@@ -10850,7 +11375,7 @@ window.__ModuleLoader__.load({
           },
           onMouseLeave: (event) => event.currentTarget.removeAttribute('data-hover-lane'),
         },
-          rows.length === 0 ? E('div', { className: 'dig-empty' }, dirtyFilter ? t('filter.none') : t('history.empty')) : null,
+          rows.length === 0 ? E('div', { className: 'dgp-empty' }, dirtyFilter ? t('filter.none') : t('history.empty')) : null,
           winStart > 0 ? E('div', { key: 'pad-top', style: { height: String(winStart * HISTORY_ROW_H) + 'px' } }) : null,
           visibleRows.map((row) => E(CommitRow, {
             key: row.commit.hash,
@@ -10861,40 +11386,271 @@ window.__ModuleLoader__.load({
           })),
           winEnd < rows.length ? E('div', { key: 'pad-bottom', style: { height: String((rows.length - winEnd) * HISTORY_ROW_H) + 'px' } }) : null,
           props.hasMore === true
-            ? E('button', { type: 'button', className: 'dig-load-more', disabled: props.busy === true, onClick: props.onLoadMore }, t('history.loadMore'))
+            ? E('button', { type: 'button', className: 'dgp-load-more', disabled: props.busy === true, onClick: props.onLoadMore }, t('history.loadMore'))
             : null))
     }
 
     function CommitDetail(props) {
       const t = props.t
       const detail = props.detail
-      if (detail === null || detail === undefined) return E('div', { className: 'dig-empty' }, t('status.loading'))
-      return E('div', { className: 'dig-detail' },
-        E('div', { className: 'dig-detail-head' },
-          E('button', { type: 'button', className: 'dig-btn dig-btn-small', onClick: props.onBack }, '← ' + t('detail.back')),
-          E('span', { className: 'dig-mono' }, detail.shortHash),
-          E('span', { className: 'dig-detail-author' }, detail.author),
-          E('span', { className: 'dig-detail-date' }, shortDate(detail.date))),
-        E('div', { className: 'dig-detail-subject' }, detail.subject),
-        detail.body === undefined || detail.body.trim() === '' ? null : E('pre', { className: 'dig-detail-body' }, detail.body.trim()),
-        E('div', { className: 'dig-detail-files-head' }, t('detail.files') + ' · ' + String(detail.files.length)),
-        E('div', { className: 'dig-detail-files' },
-          detail.files.length === 0 ? E('div', { className: 'dig-empty' }, t('detail.noFiles')) : null,
+      if (detail === null || detail === undefined) return E('div', { className: 'dgp-empty' }, t('status.loading'))
+      return E('div', { className: 'dgp-detail' },
+        E('div', { className: 'dgp-detail-head' },
+          E('button', { type: 'button', className: 'dgp-btn dgp-btn-small', onClick: props.onBack }, '← ' + t('detail.back')),
+          E('span', { className: 'dgp-mono' }, detail.shortHash),
+          E('span', { className: 'dgp-detail-author' }, detail.author),
+          E('span', { className: 'dgp-detail-date' }, shortDate(detail.date))),
+        E('div', { className: 'dgp-detail-subject' }, detail.subject),
+        detail.body === undefined || detail.body.trim() === '' ? null : E('pre', { className: 'dgp-detail-body' }, detail.body.trim()),
+        E('div', { className: 'dgp-detail-files-head' }, t('detail.files') + ' · ' + String(detail.files.length)),
+        E('div', { className: 'dgp-detail-files' },
+          detail.files.length === 0 ? E('div', { className: 'dgp-empty' }, t('detail.noFiles')) : null,
           detail.files.map((file) => E('div', {
             key: file.path,
-            className: 'dig-row dig-row-file' + (props.selectedPath === file.path ? ' dig-row-selected' : ''),
+            className: 'dgp-row dgp-row-file' + (props.selectedPath === file.path ? ' dgp-row-selected' : ''),
             title: file.path,
             onClick: () => props.onSelectFile(file),
             onContextMenu: props.onFileMenu === undefined ? undefined : (event) => { event.preventDefault(); props.onFileMenu(event, file) },
           },
             FileTypeGlyph({ path: file.path }),
-            E('span', { className: 'dig-row-label' }, baseName(file.path)),
-            E('span', { className: 'dig-row-sub dig-row-dir' }, dirName(file.path)),
-            file.additions > 0 ? E('span', { className: 'dig-stat-add' }, '+' + file.additions) : null,
-            file.deletions > 0 ? E('span', { className: 'dig-stat-del' }, '-' + file.deletions) : null))))
+            E('span', { className: 'dgp-row-label' }, baseName(file.path)),
+            E('span', { className: 'dgp-row-sub dgp-row-dir' }, dirName(file.path)),
+            file.additions > 0 ? E('span', { className: 'dgp-stat-add' }, '+' + file.additions) : null,
+            file.deletions > 0 ? E('span', { className: 'dgp-stat-del' }, '-' + file.deletions) : null))))
     }
 
     /* ============================== panel ============================== */
+
+    /* Each row owns its requests and drafts; folded rows remain mounted. */
+    const repositoryScanQueue = []
+    let repositoryScans = 0
+    function scanRepository(payload) {
+      return new Promise((resolve, reject) => {
+        repositoryScanQueue.push({ payload: payload, resolve: resolve, reject: reject })
+        const pump = () => {
+          while (repositoryScans < repositoryScanSlots() && repositoryScanQueue.length > 0) {
+            const next = repositoryScanQueue.shift()
+            repositoryScans += 1
+            void request('summary', next.payload).then(next.resolve, next.reject).finally(() => {
+              repositoryScans -= 1
+              pump()
+            })
+          }
+        }
+        pump()
+      })
+    }
+
+    function RepositoryRow(props) {
+      const t = props.t
+      const repo = props.repo
+      const base = useMemo(() => ({ cwd: props.cwd, repoRoot: repo.path }), [props.cwd, repo.path])
+      const storageKey = 'dsh-git-panel.repository.v1:' + JSON.stringify([props.cwd, props.sessionId, repo.path])
+      const [expanded, setExpanded] = useState(() => {
+        try {
+          const saved = window.localStorage.getItem(storageKey)
+          if (saved !== null) return saved === 'true'
+        } catch (error) { void error }
+        return repo.path === props.initialRepoRoot
+      })
+      const [warning, setWarning] = useState(null)
+      const [opened, setOpened] = useState(expanded)
+      /* Seed the last known summary from the persistent row cache: head paints
+         branch/count immediately, an expanded body paints the last changes —
+         the mount refresh below re-proves everything a beat later. The switch
+         (row Config, default ON) gates both directions; a row whose seed is off
+         or missing stays on the old cold path. The miss reads undefined (the
+         readPaint* contract, like readPaintPage) and converts to the state's
+         null: every guard in this component branches on `summary === null`. */
+      const [summary, setSummary] = useState(() => (rowPaintCacheEnabled() === true ? (readPaintRowSummary(repo.path) ?? null) : null))
+      const [busy, setBusy] = useState(false)
+      const [loading, setLoading] = useState(true)
+      const [error, setError] = useState(null)
+      const [selection, setSelection] = useState(() => new Set())
+      const anchorRef = useRef(null)
+      const [foldedDirs, setFoldedDirs] = useState({})
+      const [dialog, setDialog] = useState(null)
+      const [undo, setUndo] = useState(null)
+      const [patch, setPatch] = useState(null)
+      const [patchLoading, setPatchLoading] = useState(false)
+      const alive = useRef(false)
+      const revision = useRef(0)
+      const diffRevision = useRef(0)
+      const actionInFlight = useRef(false)
+      const scanInFlight = useRef(false)
+      const scanToken = useRef(0)
+      useEffect(() => {
+        alive.current = true
+        return () => { alive.current = false; revision.current += 1; diffRevision.current += 1 }
+      }, [])
+      useEffect(() => {
+        if (expanded === true) setOpened(true)
+        try { window.localStorage.setItem(storageKey, String(expanded)) } catch (error) { void error }
+      }, [expanded, storageKey])
+      const refresh = useCallback(async (afterAction) => {
+        if (actionInFlight.current === true && afterAction !== true) return false
+        const scan = ++scanToken.current
+        const token = ++revision.current
+        scanInFlight.current = true
+        setLoading(true)
+        try {
+          const data = await scanRepository(Object.assign({}, base, { stats: false }))
+          /* Cache regardless of liveness: the summary describes the repository,
+             not this row — the next mount seeds from it even if this one left.
+             The switch (row Config, default ON) gates the write too, so turning
+             it off stops refreshing the store without losing what it holds. */
+          if (rowPaintCacheEnabled() === true) writePaintRowSummary(repo.path, data)
+          if (alive.current === false || token !== revision.current) return false
+          setSummary(data)
+          setError(null)
+          const valid = new Set()
+          for (const group of ['staged', 'unstaged', 'untracked', 'conflicted']) {
+            for (const entry of data.changes[group]) valid.add(group + ':' + entry.path)
+          }
+          setSelection((previous) => new Set([...previous].filter((key) => valid.has(key))))
+          return true
+        } catch (caught) {
+          if (alive.current === true && token === revision.current) setError(caught instanceof Error ? caught.message : String(caught))
+          return false
+        } finally {
+          if (scan === scanToken.current) {
+            scanInFlight.current = false
+            if (alive.current === true) setLoading(false)
+          }
+        }
+      }, [base])
+      useEffect(() => { void refresh() }, [refresh, props.refreshTick])
+      useEffect(() => {
+        if (props.visible !== true) return undefined
+        const ms = props.autoRefreshMs === undefined || props.autoRefreshMs === null ? 12000 : props.autoRefreshMs
+        if (ms <= 0) return undefined
+        const timer = setInterval(() => {
+          if (document.visibilityState !== 'visible') return
+          if (scanInFlight.current === false && actionInFlight.current === false) void refresh()
+        }, ms)
+        return () => clearInterval(timer)
+      }, [props.visible, refresh, props.autoRefreshMs])
+      const run = useCallback(async (method, payload) => {
+        if (actionInFlight.current === true) return false
+        actionInFlight.current = true
+        revision.current += 1
+        setWarning(null)
+        setBusy(true)
+        setError(null)
+        try {
+          const data = await request(method, Object.assign({}, base, payload))
+          if (alive.current === false) return false
+          if (data.undo !== undefined) setUndo(data.undo)
+          await refresh(true)
+          if (alive.current === false) return false
+          if (data.undoBlocked === true) {
+            setUndo(null)
+            setWarning(fill(t('toast.discardNoUndo'), { path: (payload.paths || []).join(', ') }))
+          }
+          if (typeof data.pushError === 'string' && data.pushError !== '') setWarning(data.pushError)
+          return true
+        } catch (caught) {
+          if (alive.current === true) setError(caught instanceof Error ? caught.message : String(caught))
+          return false
+        } finally {
+          actionInFlight.current = false
+          if (alive.current === true) setBusy(false)
+        }
+      }, [base, refresh, t])
+      const showDiff = useCallback(async (item, group) => {
+        const seed = { repoRoot: repo.path, path: item.path, staged: group === 'staged', untracked: group === 'untracked' }
+        if (props.onPreviewDiff(seed) === true) return
+        const token = ++diffRevision.current
+        setPatch({ path: item.path, text: '' })
+        setPatchLoading(true)
+        try {
+          const data = await request('diff', Object.assign({}, base, seed))
+          if (alive.current === true && token === diffRevision.current) setPatch({ path: item.path, text: data.patch })
+        } catch (caught) {
+          if (alive.current === true && token === diffRevision.current) setError(caught instanceof Error ? caught.message : String(caught))
+        } finally {
+          if (alive.current === true && token === diffRevision.current) setPatchLoading(false)
+        }
+      }, [base, repo.path, props.onPreviewDiff])
+      const changes = summary === null ? null : summary.changes
+      const pathsOf = (groups, picked) => {
+        const paths = new Set()
+        if (changes !== null) for (const group of groups) for (const item of changes[group]) {
+          if (picked !== true || selection.has(group + ':' + item.path)) paths.add(item.path)
+        }
+        return [...paths]
+      }
+      const stagePaths = pathsOf(['unstaged', 'untracked', 'conflicted'])
+      const count = pathsOf(['staged', 'unstaged', 'untracked', 'conflicted']).length
+      const branch = summary === null ? repo.branch : summary.branch
+      const askDiscard = (item, group) => setDialog({ item: item, group: group })
+      const bulk = (method, groups) => {
+        const paths = pathsOf(groups, true)
+        if (paths.length > 0) void run(method, { paths: paths })
+      }
+      const copySelection = () => copyText(pathsOf(['staged', 'unstaged', 'untracked', 'conflicted'], true).join('\n'))
+      const rowMenu = (event, item, group) => props.onOpenMenu(event, [
+        { id: 'diff', label: t('action.showDiff'), icon: 'file', run: () => { void showDiff(item, group) } },
+        { id: 'stage', label: t(group === 'staged' ? 'action.unstage' : 'action.stage'), icon: group === 'staged' ? 'minus' : 'plus', disabled: busy, run: () => { void run(group === 'staged' ? 'unstage' : 'stage', { paths: [item.path] }) } },
+        { id: 'discard', label: t('action.discard'), icon: 'undo', danger: true, disabled: busy, run: () => askDiscard(item, group) },
+      ])
+      const action = (id, icon, label, handler, disabled) => E('button', {
+        key: id, type: 'button', className: 'dgp-icon-btn' + (id === 'refresh' && loading ? ' dgp-spin' : ''),
+        'data-action': id, title: label, 'aria-label': label, disabled: disabled, onClick: handler,
+      }, E(Icon, { name: icon, size: 14 }))
+      return E('section', { className: 'dgp-repository', 'data-repo-root': repo.path, 'aria-busy': busy || loading },
+        E('div', { className: 'dgp-repository-head' },
+          E('button', { type: 'button', className: 'dgp-repository-toggle', 'aria-expanded': expanded, title: repo.path, onClick: () => setExpanded((value) => !value) },
+            E('span', { className: 'dgp-chevron' + (expanded ? ' dgp-chevron-open' : '') }, E(Icon, { name: 'chevron', size: 12 })),
+            E(Icon, { name: 'folder', size: 14 }), E('span', { className: 'dgp-repository-name' }, repo.name),
+            E('span', { className: 'dgp-repository-branch', title: branch || 'HEAD' }, E(Icon, { name: 'branch', size: 12 }), branch || 'HEAD')),
+          E('span', { className: 'dgp-repository-actions' },
+            action('refresh', 'refresh', t('toolbar.refresh'), () => { void refresh() }, busy || loading),
+            action('stage-all', 'plus', t('changes.stageAll'), () => { void run('stage', { paths: stagePaths }) }, busy || loading || stagePaths.length === 0),
+            action('workbench', 'branch', t('seg.history'), () => props.onWorkbench(repo.path), busy)),
+          E('span', { className: 'dgp-repository-count dgp-count', 'aria-label': summary === null ? t('status.loading') : fill(t('seg.changes'), { n: count }) }, summary === null ? '…' : String(count))),
+        error === null && warning === null ? null : E('div', { className: 'dgp-banner', role: 'alert' }, E('span', { className: 'dgp-banner-text' }, error || warning),
+          E('button', { type: 'button', className: 'dgp-link', onClick: () => { setError(null); setWarning(null) } }, t('error.dismiss'))),
+        undo === null ? null : E('div', { className: 'dgp-note' }, E('span', { className: 'dgp-banner-text' }, undo.label),
+          E('button', { type: 'button', className: 'dgp-link', disabled: busy, onClick: async () => { if (await run('undoApply', { id: undo.id })) setUndo(null) } }, t('toast.undo'))),
+        opened === false ? null : E('div', { className: 'dgp-repository-body', hidden: !expanded },
+          summary === null ? E('div', { className: 'dgp-empty' }, t(error === null ? 'status.loading' : 'action.unavailable')) : E(ChangesPanel, {
+            t: t, summary: summary, busy: busy || loading, compact: false, hideHeader: true,
+            isolated: true, groupBy: 'flat', sortKey: 'git', foldedDirs: foldedDirs, onFoldedDirs: setFoldedDirs,
+            request: request, cwd: props.cwd, sessionId: props.sessionId, commitSettings: props.commitSettings, base: base,
+            onCommit: (message, amend, push) => run('commit', { message: message, amend: amend, push: push === true, confirm: push === true }),
+            onStage: (item) => { void run('stage', { paths: [item.path] }) }, onUnstage: (item) => { void run('unstage', { paths: [item.path] }) },
+            onStageAll: (items) => { if (items.length > 0) void run('stage', { paths: items.map((item) => item.path) }) },
+            onUnstageAll: () => { const paths = pathsOf(['staged']); if (paths.length > 0) void run('unstage', { paths: paths }) },
+            onDiscard: askDiscard, onDiff: (item, group) => { void showDiff(item, group) }, onChangeMenu: rowMenu,
+            selection: selection, onSelectionChange: setSelection, anchorRef: anchorRef,
+            onBulkStage: () => bulk('stage', ['unstaged', 'untracked', 'conflicted']), onBulkUnstage: () => bulk('unstage', ['staged']), onCopySelection: copySelection,
+            onKeyDown: (event) => {
+              if (event.key === 'Escape') { event.preventDefault(); setSelection(new Set()) }
+              else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') { event.preventDefault(); copySelection() }
+              else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+                event.preventDefault()
+                setSelection(new Set(['staged', 'unstaged', 'untracked', 'conflicted'].flatMap((group) => changes[group].map((item) => group + ':' + item.path))))
+              }
+            },
+          }),
+          patch === null ? null : E('div', { className: 'dgp-repository-diff' },
+            E('div', { className: 'dgp-diff-head' }, E('span', { className: 'dgp-diff-path' }, patch.path),
+              E('button', { type: 'button', className: 'dgp-icon-btn', 'aria-label': t('toast.close'), onClick: () => { diffRevision.current += 1; setPatch(null); setPatchLoading(false) } }, E(Icon, { name: 'close', size: 12 }))),
+            E(DiffBody, { patch: patch.text, loading: patchLoading, t: t }))),
+        dialog === null ? null : E(ConfirmDialog, {
+          t: t, title: t('confirm.title'), okLabel: t('confirm.ok'), cancelLabel: t('confirm.cancel'),
+          text: fill(t(dialog.group === 'untracked' ? 'discard.untracked.confirm' : 'discard.confirm'), { path: dialog.item.path }),
+          onCancel: () => setDialog(null),
+          onConfirm: () => { const target = dialog; setDialog(null); void run('discard', { paths: [target.item.path], untracked: target.group === 'untracked', confirm: true }) },
+        }))
+    }
+
+    function RepositoryList(props) {
+      return E('div', { className: 'dgp-repositories', role: 'region', 'aria-label': props.t('changes.title') },
+        props.repos.length === 0 ? E('div', { className: 'dgp-empty' }, props.t(props.loading === true ? 'status.loading' : 'repo.empty')) : null,
+        props.repos.map((repo) => E(RepositoryRow, Object.assign({}, props, { key: repo.path, repo: repo }))))
+    }
 
     function Panel(props) {
       const scope = props.scope
@@ -10908,13 +11664,39 @@ window.__ModuleLoader__.load({
       // Ignored files are opt-in: --ignored walks the ignore rules, and nobody
       // needs node_modules listed while they are writing a commit message.
       const [showIgnored, setShowIgnored] = useState(false)
+      /* Status auto-update (see the strategy note by autoRefreshMs): the cadence
+         re-reads LIVE on every rail-config write (no reload), and the wake tick
+         fires one cheap round when the window comes back. */
+      const [pollMs, setPollMs] = useState(() => autoRefreshMs())
+      const [focusTick, setFocusTick] = useState(0)
+      useEffect(() => subscribeRailConfig(() => { setPollMs(autoRefreshMs()) }), [])
+      useEffect(() => {
+        if (props.visible !== true) return undefined
+        const last = { at: 0 }
+        const wake = () => {
+          if (document.visibilityState !== 'visible') return
+          if (refreshOnFocusEnabled() === false) return
+          /* focus and visibilitychange usually arrive together; one wake per
+             second is plenty and keeps the double event from double-scanning. */
+          const now = Date.now()
+          if (now - last.at < 1000) return
+          last.at = now
+          setFocusTick((value) => value + 1)
+        }
+        document.addEventListener('visibilitychange', wake)
+        window.addEventListener('focus', wake)
+        return () => {
+          document.removeEventListener('visibilitychange', wake)
+          window.removeEventListener('focus', wake)
+        }
+      }, [props.visible])
       const [branches, setBranches] = useState(null)
       const [commits, setCommits] = useState([])
       const [hasMore, setHasMore] = useState(false)
       const [error, setError] = useState(null)
       const [note, setNote] = useState(null)
       const [busy, setBusy] = useState(false)
-      const [view, setView] = useState('history')
+      const [view, setView] = useState('repositories')
       /* Pane sizes are remembered per surface (see the pane sizing core). The ref
          is the value the pointer handlers write through: a drag updates state for
          the preview and the ref for the single write that pointerup performs. */
@@ -10960,7 +11742,24 @@ window.__ModuleLoader__.load({
 
       const cwd = typeof scope.cwd === 'string' && scope.cwd !== '' ? scope.cwd : undefined
       const sessionId = typeof scope.sessionId === 'string' ? scope.sessionId : 'default'
-      const base = useMemo(() => ({ cwd: cwd, repoRoot: repoRoot === null ? undefined : repoRoot }), [cwd, repoRoot])
+      const base = useMemo(() => ({ cwd: cwd, repoRoot: repoRoot === null ? undefined : repoRoot }), [cwd, repoRoot, sessionId])
+      const workbenchIdentity = useRef(base)
+      const pendingWork = useRef(new Map())
+      const guardRevision = useRef(0)
+      const summaryRevision = useRef(0)
+      const branchRevision = useRef(0)
+      const commitRevision = useRef(0)
+      const refreshRevision = useRef(0)
+      const summaryInFlight = useRef(null)
+      const currentSummary = useRef(null)
+      workbenchIdentity.current = base
+      useEffect(() => {
+        setBusy(false); setError(null); setMenu(null); setDialog(null); setRefreshSpinning(false)
+        setChangeSelection(new Set()); setPickedCommits(new Set())
+        setSelectedHash(null); setSelectedPath(null); setDetail(null)
+        setPatch(''); setPatchLoading(false); setDiffContext(null)
+      }, [base])
+      useEffect(() => { setView('repositories') }, [cwd, sessionId])
 
       /* Layout effect ON PURPOSE: the chrome (compact/columns/stack) and the
          rail capacity derive from these numbers, and a paint-then-correct
@@ -11014,7 +11813,7 @@ window.__ModuleLoader__.load({
       const [immersiveSeat, setImmersiveSeat] = useState(false)
       useMeasureLayoutEffect(() => {
         const node = hostRef.current
-        const holder = node === null || typeof node.closest !== 'function' ? null : node.closest('.dig-conversation-seat[data-immersive="1"]')
+        const holder = node === null || typeof node.closest !== 'function' ? null : node.closest('.dgp-conversation-seat[data-immersive="1"]')
         setImmersiveSeat(holder !== null)
       })
       const compact = size.width > 0 && size.width < COMPACT_MAX_WIDTH
@@ -11193,17 +11992,24 @@ window.__ModuleLoader__.load({
       }, [repoRoot, columns, compact])
 
       const guard = useCallback(async (work) => {
+        const identity = base
+        if (workbenchIdentity.current !== identity) return undefined
+        const token = ++guardRevision.current
+        pendingWork.current.set(identity, (pendingWork.current.get(identity) || 0) + 1)
         setBusy(true)
         setError(null)
         try {
           return await work()
         } catch (caught) {
-          setError(caught instanceof Error ? caught.message : String(caught))
+          if (workbenchIdentity.current === identity) setError(caught instanceof Error ? caught.message : String(caught))
           return undefined
         } finally {
-          setBusy(false)
+          const remaining = (pendingWork.current.get(identity) || 1) - 1
+          if (remaining > 0) pendingWork.current.set(identity, remaining)
+          else pendingWork.current.delete(identity)
+          if (workbenchIdentity.current === identity) setBusy(remaining > 0)
         }
-      }, [])
+      }, [base])
 
       const favorites = useMemo(() => (repoRoot === null ? [] : readFavorites(repoRoot)), [repoRoot, favTick])
       const toggleFavoriteBranch = useCallback((name) => {
@@ -11216,13 +12022,21 @@ window.__ModuleLoader__.load({
         /* No workspace attached: there is nothing to scan, so land the empty
            result straight away instead of leaving repoState null (which reads
            as "still loading" and would spin forever). */
-        if (cwd === undefined) { setRepoState({ repos: [], isRepo: false }); return undefined }
+        if (cwd === undefined) { setRepoState({ repos: [], isRepo: false, workspace: cwd }); setRepoRoot(null); return undefined }
         let cancelled = false
         /* First-paint cache: a session switch through the same workspace
            reuses the previous discovery synchronously (repo bar and pick land
            with the first paint), then the background scan re-proves it. */
+        /* List update strategy: the discovery is the SLOWEST scan (a directory
+           walk plus per-repo git) and its result barely changes, so it runs
+           ONCE PER OPEN — this effect, keyed [cwd, sessionId, tick] — and on
+           the manual refresh button (the only thing that bumps tick). The
+           status poll and the wake path below never touch it: rows appear and
+           leave through an explicit refresh, exactly the trade the user asked
+           for. This is the single repos call site in the client;
+           the smoke test pins that count. */
         const apply = (data, cachedPick) => {
-          setRepoState(data)
+          setRepoState(Object.assign({}, data, { workspace: cwd }))
           const paths = data.repos.map((repo) => repo.path)
           const remembered = readRememberedRepo(sessionId)
           let pick = null
@@ -11236,6 +12050,7 @@ window.__ModuleLoader__.load({
         }
         const cached = readPaintRepos(cwd)
         if (cached !== undefined) apply(cached, readPaintRoot(cwd))
+        else { setRepoState(null); setRepoRoot(null); setSummary(null); setBranches(null); setCommits([]) }
         void (async () => {
           try {
             const data = await request('repos', { cwd: cwd })
@@ -11302,7 +12117,7 @@ window.__ModuleLoader__.load({
         const changes = data.changes
         const staged = build(changes.staged, statsPayload.staged)
         const unstaged = build(changes.unstaged, statsPayload.unstaged)
-        if (staged === changes.staged && unstaged === changes.unstaged) return data
+        if (staged === changes.staged && unstaged === changes.unstaged) return data.statsDeferred === true ? Object.assign({}, data, { statsDeferred: false }) : data
         return Object.assign({}, data, {
           statsDeferred: false,
           changes: Object.assign({}, changes, { staged: staged, unstaged: unstaged }),
@@ -11310,33 +12125,57 @@ window.__ModuleLoader__.load({
       }
 
       const loadSummary = useCallback(async () => {
-        /* Two-phase (issue #11): the rows land first (`stats: false` skips the
-           two numstat passes), then the +/- numbers merge in behind them. The
-           panel is usable the moment the rows arrive; the numbers are exact
-           when they arrive — nothing is approximated or dropped. */
-        const data = await request('summary', Object.assign({}, base, { ignored: showIgnored, stats: false }))
-        setSummary(data)
-        if (data.statsDeferred === true) {
-          const merged = applyStats(data, await request('stats', base))
-          setSummary(merged)
-          return merged
+        const token = ++summaryRevision.current
+        const round = { identity: base, token: token }
+        summaryInFlight.current = round
+        const current = () => workbenchIdentity.current === base && token === summaryRevision.current
+        const finish = () => { if (summaryInFlight.current === round) summaryInFlight.current = null }
+        try {
+          const data = await request('summary', Object.assign({}, base, { ignored: showIgnored, stats: false }))
+          if (current() === false) { finish(); return data }
+          const snapshot = { identity: base, data: data }
+          currentSummary.current = snapshot
+          setSummary(data)
+          const cached = readPaintPage(repoRoot)
+          if (cached !== undefined) writePaintPage(repoRoot, Object.assign({}, cached, { summary: data }))
+          if (data.statsDeferred === true) {
+            /* Numbers are enrichment, not first-page readiness. The snapshot and
+               revision checks reject an older round even within the same repo. */
+            void request('stats', base).then((stats) => {
+              if (current() === false || currentSummary.current !== snapshot) return
+              const merged = applyStats(data, stats)
+              snapshot.data = merged
+              setSummary(merged)
+              const page = readPaintPage(repoRoot)
+              if (page !== undefined && page.summary === data) writePaintPage(repoRoot, Object.assign({}, page, { summary: merged }))
+            }).catch((caught) => {
+              if (current() === true) setError(caught instanceof Error ? caught.message : String(caught))
+            }).finally(finish)
+          } else finish()
+          return data
+        } catch (caught) {
+          finish()
+          throw caught
         }
-        return data
-      }, [base, showIgnored])
+      }, [base, repoRoot, showIgnored])
 
       const loadBranches = useCallback(async () => {
+        const token = ++branchRevision.current
         const data = await request('branches', base)
-        setBranches(data)
+        if (workbenchIdentity.current === base && token === branchRevision.current) setBranches(data)
         return data
       }, [base])
 
       const loadCommits = useCallback(async (skip, overridePath) => {
+        const token = ++commitRevision.current
         const activePath = overridePath === undefined ? pathFilter : overridePath
         const payload = Object.assign({}, base, { skip: skip === undefined ? 0 : skip, limit: 120 })
         if (activePath !== undefined && activePath !== '') payload.path = activePath
         const data = await request('log', payload)
-        setCommits((previous) => (skip === undefined || skip === 0 ? data.commits : previous.concat(data.commits)))
-        setHasMore(data.hasMore)
+        if (workbenchIdentity.current === base && token === commitRevision.current) {
+          setCommits((previous) => (skip === undefined || skip === 0 ? data.commits : previous.concat(data.commits)))
+          setHasMore(data.hasMore)
+        }
         return data
       }, [base, pathFilter])
 
@@ -11352,6 +12191,8 @@ window.__ModuleLoader__.load({
       /* Declared before refresh (hooks dep TDZ rule): the manual refresh
          fetches only when a remote exists. */
       const remoteReady = branches !== null && Array.isArray(branches.remotes) && branches.remotes.length > 0
+      const remoteReadyRef = useRef(remoteReady)
+      remoteReadyRef.current = remoteReady
       const [refreshSpinning, setRefreshSpinning] = useState(false)
       /* Fold state of the per-directory groups, lifted from ChangesPanel so the
          ⋯ menu's 展开全部/折叠全部 entries drive the same map the folder
@@ -11359,28 +12200,36 @@ window.__ModuleLoader__.load({
       const [foldedDirs, setFoldedDirs] = useState({})
       const refresh = useCallback(async (opts) => {
         if (repoRoot === null) return
-        const withFetch = opts !== null && typeof opts === 'object' && opts.fetchRemote === true && remoteReady === true
+        const token = ++refreshRevision.current
+        const withFetch = opts !== null && typeof opts === 'object' && opts.fetchRemote === true && remoteReadyRef.current === true
         if (withFetch === true) setRefreshSpinning(true)
         try {
           await guard(async () => {
             if (withFetch === true) {
               try { await request('fetch', Object.assign({}, base, { prune: true })) } catch (error) { void error }
             }
-            const [summaryData, branchesData, page] = await Promise.all([loadSummary(), loadBranches(), loadCommits(0)])
-            /* The write side of the first-paint cache: exactly the FIRST page
-               (a paged fetch never reaches this path), replaced on every
-               refresh — the auto-refresh included — so a session switch through
-               the same workspace seeds fresh data, not the mount-time
-               snapshot. */
-            writePaintPage(repoRoot, { summary: summaryData, branches: branchesData, commits: page.commits, hasMore: page.hasMore })
+            if (workbenchIdentity.current !== base || token !== refreshRevision.current) return
+            let result
+            try { result = await Promise.all([loadSummary(), loadBranches(), loadCommits(0)]) }
+            catch (caught) {
+              if (workbenchIdentity.current !== base || token !== refreshRevision.current) return
+              throw caught
+            }
+            const [summaryData, branchesData, page] = result
+            if (workbenchIdentity.current !== base || token !== refreshRevision.current) return
+            /* Stats may finish before or after the first-page requests. Preserve
+               the latest summary and let its guarded enrichment update the cache. */
+            const latest = currentSummary.current
+            writePaintPage(repoRoot, { summary: latest !== null && latest.identity === base ? latest.data : summaryData, branches: branchesData, commits: page.commits, hasMore: page.hasMore })
           })
         } finally {
-          if (withFetch === true) setRefreshSpinning(false)
+          if (withFetch === true && workbenchIdentity.current === base) setRefreshSpinning(false)
         }
-      }, [guard, loadSummary, loadBranches, loadCommits, repoRoot, remoteReady, base])
+      }, [guard, loadSummary, loadBranches, loadCommits, repoRoot, base])
 
+      const workbenchActive = view !== 'repositories'
       useEffect(() => {
-        if (repoRoot === null) return undefined
+        if (repoRoot === null || workbenchActive === false) return undefined
         /* First-paint cache: seed the first page synchronously so a session
            switch through the same workspace paints the full chrome (rail,
            branch bar, history) at once instead of re-growing it piece by
@@ -11396,30 +12245,41 @@ window.__ModuleLoader__.load({
         void refresh()
         return undefined
         // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [repoRoot, refresh, tick])
+      }, [repoRoot, refresh, tick, workbenchActive])
 
       useEffect(() => {
-        if (props.visible !== true || repoRoot === null) return undefined
-        /* In-flight gate (issue #11): a summary over a tree with thousands of
-           changes can outlast AUTO_REFRESH_MS, and re-entering just piles
-           queued scans behind the repo lock (the interval deliberately does
-           not run through `guard` — a background refresh must not flash the
-           busy UI). Skip while the previous round is still running; the next
-           tick re-checks. */
-        let inFlight = false
+        if (props.visible !== true || repoRoot === null || workbenchActive === false) return undefined
+        if (pollMs <= 0) return undefined
+        /* Share the gate with initial/manual/post-action summaries. Enrichment
+           may outlast a poll interval and should never stack another scan. */
         const timer = setInterval(() => {
-          if (inFlight === true) return
-          inFlight = true
-          void (async () => {
-            try { await loadSummary() } catch (error) { void error } finally { inFlight = false }
-          })()
-        }, AUTO_REFRESH_MS)
+          if (document.visibilityState !== 'visible') return
+          const pending = summaryInFlight.current
+          if (pending !== null && pending.identity === base) return
+          void loadSummary().catch(() => {})
+        }, pollMs)
         return () => clearInterval(timer)
-      }, [props.visible, repoRoot, loadSummary])
+      }, [props.visible, repoRoot, loadSummary, workbenchActive, base, pollMs])
+
+      /* Wake refresh (`refreshOnFocus`): one cheap summary round when the
+         window comes back — the same gate the poll uses. The guard keeps the
+         repo-switch identity of loadSummary from re-firing this effect. */
+      const lastWake = useRef(-1)
+      useEffect(() => {
+        if (focusTick === lastWake.current) return
+        lastWake.current = focusTick
+        if (focusTick === 0) return
+        const pending = summaryInFlight.current
+        if (pending !== null && pending.identity === base) return
+        void loadSummary().catch(() => {})
+      }, [focusTick, base, loadSummary])
 
       const run = useCallback(async (method, payload) => {
         const result = await guard(() => request(method, Object.assign({}, base, payload)))
-        if (result !== undefined) await refresh()
+        if (result !== undefined && workbenchIdentity.current === base) {
+          await refresh()
+          if (workbenchIdentity.current === base && typeof result.pushError === 'string' && result.pushError !== '') setError(result.pushError)
+        }
         return result
       }, [base, guard, refresh])
 
@@ -11442,11 +12302,11 @@ window.__ModuleLoader__.load({
         setPatch('')
         try {
           const data = await request('diff', Object.assign({}, base, seed))
-          setPatch(data.patch)
+          if (workbenchIdentity.current === base) setPatch(data.patch)
         } catch (caught) {
-          setError(caught instanceof Error ? caught.message : String(caught))
+          if (workbenchIdentity.current === base) setError(caught instanceof Error ? caught.message : String(caught))
         } finally {
-          setPatchLoading(false)
+          if (workbenchIdentity.current === base) setPatchLoading(false)
         }
       }, [base])
 
@@ -11461,17 +12321,18 @@ window.__ModuleLoader__.load({
          ref 的 worktree + repoRoot 都填本面板的仓库根:DiffTab 的加载器把
          repoRoot 并进它自己的 git 调用,多仓库工作区不会落错仓库。 */
       const previewDiff = useCallback((seed) => {
-        if (repoRoot === null) return false
+        const targetRoot = typeof seed.repoRoot === 'string' ? seed.repoRoot : repoRoot
+        if (targetRoot === null) return false
         const commitHash = seed.hash !== undefined && seed.hash !== null ? String(seed.hash) : null
         const ref = commitHash !== null
-          ? { kind: 'commit', hash: commitHash.slice(0, 7), hashFull: commitHash, subject: seed.subject || '', worktree: repoRoot, repoRoot: repoRoot }
-          : { kind: 'worktree', path: seed.path, staged: seed.staged === true, untracked: seed.untracked === true ? true : undefined, worktree: repoRoot, repoRoot: repoRoot }
+          ? { kind: 'commit', hash: commitHash.slice(0, 7), hashFull: commitHash, subject: seed.subject || '', worktree: targetRoot, repoRoot: targetRoot }
+          : { kind: 'worktree', path: seed.path, staged: seed.staged === true, untracked: seed.untracked === true ? true : undefined, worktree: targetRoot, repoRoot: targetRoot }
         const title = commitHash !== null
           ? commitHash.slice(0, 7) + (seed.subject ? ' ' + seed.subject : '')
           : baseName(String(seed.path))
         const id = commitHash !== null
-          ? 'diff:c:' + encodeURIComponent(repoRoot) + ':' + commitHash
-          : 'diff:w:' + encodeURIComponent(repoRoot) + ':' + (seed.staged === true ? 's' : 'u') + ':' + seed.path
+          ? 'diff:c:' + encodeURIComponent(targetRoot) + ':' + commitHash
+          : 'diff:w:' + encodeURIComponent(targetRoot) + ':' + (seed.staged === true ? 's' : 'u') + ':' + seed.path
         const tab = { id: id, type: 'diff', title: title, diff: ref }
         /* Seat channel first — the bottom workbench opens its own diff tab,
            the right column opens it there; placement is the base's call. */
@@ -11509,8 +12370,8 @@ window.__ModuleLoader__.load({
           try {
             const scopeObject = scope || {}
             previewStore.set(commitHash !== null
-              ? { hash: commitHash, subject: seed.subject || '', path: seed.path !== undefined && seed.path !== null ? seed.path : '', cwd: scopeObject.cwd, repoRoot: repoRoot, sessionId: scopeObject.sessionId }
-              : { path: seed.path, staged: seed.staged === true, untracked: seed.untracked === true ? true : undefined, cwd: scopeObject.cwd, repoRoot: repoRoot, sessionId: scopeObject.sessionId })
+              ? { hash: commitHash, subject: seed.subject || '', path: seed.path !== undefined && seed.path !== null ? seed.path : '', cwd: scopeObject.cwd, repoRoot: targetRoot, sessionId: scopeObject.sessionId }
+              : { path: seed.path, staged: seed.staged === true, untracked: seed.untracked === true ? true : undefined, cwd: scopeObject.cwd, repoRoot: targetRoot, sessionId: scopeObject.sessionId })
             sidebarRight.openTab(NATIVE_PREVIEW_KIND)
             return true
           } catch (error) { void error }
@@ -11539,9 +12400,10 @@ window.__ModuleLoader__.load({
         setView('detail')
         setDetail(null)
         try {
-          setDetail(await request('commitDetail', Object.assign({}, base, { hash: commit.hash })))
+          const data = await request('commitDetail', Object.assign({}, base, { hash: commit.hash }))
+          if (workbenchIdentity.current === base) setDetail(data)
         } catch (caught) {
-          setError(caught instanceof Error ? caught.message : String(caught))
+          if (workbenchIdentity.current === base) setError(caught instanceof Error ? caught.message : String(caught))
         }
       }, [base])
 
@@ -12172,7 +13034,7 @@ window.__ModuleLoader__.load({
 
       /* ---------- shared pieces ---------- */
 
-      const repoOptions = repoState === null ? [] : repoState.repos
+      const repoOptions = repoState === null || repoState.workspace !== cwd ? [] : repoState.repos
       const dirty = summary === null ? 0 : summary.changes.staged.length + summary.changes.unstaged.length + summary.changes.untracked.length + summary.changes.conflicted.length
 
       /* Both header switchers are menu-driven now (see RepoSelect): the
@@ -12201,40 +13063,41 @@ window.__ModuleLoader__.load({
         })))
       }, [openMenuAt, branches, checkout])
 
-      const topBar = E('div', { className: 'dig-topbar' },
+      const topBar = E('div', { className: 'dgp-topbar' },
+        E('button', { type: 'button', className: 'dgp-icon-btn', 'data-action': 'repositories', title: t('changes.title'), 'aria-label': t('changes.title'), onClick: () => setView('repositories') }, E(Icon, { name: 'chevron', size: 12 })),
         E(RepoSelect, {
           t: t, repos: repoOptions, value: repoRoot,
           loading: repoState === null,
           onOpenMenu: openRepoMenu,
         }),
-        branches === null || branches.local.length === 0 ? null : E('span', { className: 'dig-select-wrap', title: branches.branch },
+        branches === null || branches.local.length === 0 ? null : E('span', { className: 'dgp-select-wrap', title: branches.branch },
           E(Icon, { name: 'branch', size: 12 }),
           E('button', {
             type: 'button',
-            className: 'dig-select dig-select-btn dig-select-branch',
+            className: 'dgp-select dgp-select-btn dgp-select-branch',
             onClick: openBranchSwitchMenu,
           },
-            E('span', { className: 'dig-repo-name' }, branches.branch),
+            E('span', { className: 'dgp-repo-name' }, branches.branch),
             E(Icon, { name: 'chevron', size: 12 }))),
-        summary === null || summary.upstream === null ? null : E('span', { className: 'dig-track' },
-          summary.ahead > 0 ? E('span', { className: 'dig-track-ahead' }, '↑' + summary.ahead) : null,
-          summary.behind > 0 ? E('span', { className: 'dig-track-behind' }, (summary.ahead > 0 ? ' ' : '') + '↓' + summary.behind) : null),
-        operation === null ? null : E('span', { className: 'dig-opchip', title: t('operation.hint') }, t('operation.' + operation)),
+        summary === null || summary.upstream === null ? null : E('span', { className: 'dgp-track' },
+          summary.ahead > 0 ? E('span', { className: 'dgp-track-ahead' }, '↑' + summary.ahead) : null,
+          summary.behind > 0 ? E('span', { className: 'dgp-track-behind' }, (summary.ahead > 0 ? ' ' : '') + '↓' + summary.behind) : null),
+        operation === null ? null : E('span', { className: 'dgp-opchip', title: t('operation.hint') }, t('operation.' + operation)),
         E('button', {
-          type: 'button', className: 'dig-icon-btn dig-icon-btn-small',
+          type: 'button', className: 'dgp-icon-btn dgp-icon-btn-small',
           title: t('undo.menu'),
           onClick: (event) => { void openUndoMenu(event) },
         }, E(Icon, { name: 'undo', size: 13 })),
-        E('span', { className: 'dig-topbar-spacer' }),
-        busy ? E('span', { className: 'dig-busy' }, t('status.busy')) : null)
+        E('span', { className: 'dgp-topbar-spacer' }),
+        busy ? E('span', { className: 'dgp-busy' }, t('status.busy')) : null)
 
-      const banner = error === null ? null : E('div', { className: 'dig-banner' },
-        E('span', { className: 'dig-banner-text' }, error),
-        E('button', { type: 'button', className: 'dig-link', onClick: () => setError(null) }, t('error.dismiss')))
+      const banner = error === null ? null : E('div', { className: 'dgp-banner' },
+        E('span', { className: 'dgp-banner-text' }, error),
+        E('button', { type: 'button', className: 'dgp-link', onClick: () => setError(null) }, t('error.dismiss')))
 
-      const noteBanner = note === null ? null : E('div', { className: 'dig-note' },
-        E('span', { className: 'dig-banner-text' }, note),
-        E('button', { type: 'button', className: 'dig-link', onClick: () => setNote(null) }, t('error.dismiss')))
+      const noteBanner = note === null ? null : E('div', { className: 'dgp-note' },
+        E('span', { className: 'dgp-banner-text' }, note),
+        E('button', { type: 'button', className: 'dgp-link', onClick: () => setNote(null) }, t('error.dismiss')))
 
 
       const historyPane = view === 'detail'
@@ -12265,10 +13128,10 @@ window.__ModuleLoader__.load({
             onKeyDown: onHistoryKeyDown,
           })
 
-      const diffPane = patch === '' && patchLoading === false ? null : E('div', { className: 'dig-diff-pane', 'data-pane': 'diff', style: paneStyle('diff'), onContextMenu: onDiffPaneContextMenu },
-        E('div', { className: 'dig-diff-head' },
-          E('span', { className: 'dig-mono dig-diff-path' }, selectedPath === null ? '' : selectedPath),
-          E('button', { type: 'button', className: 'dig-icon-btn', onClick: () => { setPatch(''); setSelectedPath(null); setDiffContext(null) } }, E(Icon, { name: 'close', size: 12 }))),
+      const diffPane = patch === '' && patchLoading === false ? null : E('div', { className: 'dgp-diff-pane', 'data-pane': 'diff', style: paneStyle('diff'), onContextMenu: onDiffPaneContextMenu },
+        E('div', { className: 'dgp-diff-head' },
+          E('span', { className: 'dgp-mono dgp-diff-path' }, selectedPath === null ? '' : selectedPath),
+          E('button', { type: 'button', className: 'dgp-icon-btn', onClick: () => { setPatch(''); setSelectedPath(null); setDiffContext(null) } }, E(Icon, { name: 'close', size: 12 }))),
         E(DiffBody, { patch: patch, loading: patchLoading, t: t }))
 
       /* ---------- rail (IDE-style left action strip) ---------- */
@@ -12507,6 +13370,7 @@ window.__ModuleLoader__.load({
       }
       const commitSettings = readCommitSettings()
       const changesPane = E(ChangesPanel, {
+        key: JSON.stringify([cwd, sessionId, repoRoot]),
         t: t, summary: summary, busy: busy, compact: compact, hideHeader: compact,
         groupBy: groupBy, sortKey: sortKey, onGroupBy: setGroupBy,
         foldedDirs: foldedDirs, onFoldedDirs: setFoldedDirs,
@@ -12517,9 +13381,7 @@ window.__ModuleLoader__.load({
         // Commit-and-push carries the confirm flag with it: the button already
         // says exactly what it will publish, so the host guard is satisfied by
         // the click itself rather than by a second dialog.
-        onCommit: (message, amend, push) => {
-          void run('commit', { message: message, amend: amend, push: push === true, confirm: push === true })
-        },
+        onCommit: (message, amend, push) => run('commit', { message: message, amend: amend, push: push === true, confirm: push === true }).then((result) => result !== undefined),
         onStage: (item) => { void run('stage', { paths: [item.path] }) },
         onUnstage: (item) => { void run('unstage', { paths: [item.path] }) },
         onStageAll: (entries) => { void run('stage', { paths: entries.map((entry) => entry.path) }) },
@@ -12653,7 +13515,7 @@ window.__ModuleLoader__.load({
         const children = railVisible.slice(0, slots).map((action) => E('button', {
           key: action.id,
           type: 'button',
-          className: 'dig-rail-btn dig-tone-' + action.tone + (action.active === true ? ' dig-rail-btn-active' : '') + (action.spinning === true ? ' dig-spin' : ''),
+          className: 'dgp-rail-btn dgp-tone-' + action.tone + (action.active === true ? ' dgp-rail-btn-active' : '') + (action.spinning === true ? ' dgp-spin' : ''),
           'data-action': action.id,
           'aria-pressed': action.active === true ? 'true' : 'false',
           title: action.disabled === true ? action.label + ' · ' + reason : action.label,
@@ -12664,7 +13526,7 @@ window.__ModuleLoader__.load({
           children.push(E('button', {
             key: 'more',
             type: 'button',
-            className: 'dig-rail-btn dig-rail-more',
+            className: 'dgp-rail-btn dgp-rail-more',
             title: t('rail.more'),
             onClick: (event) => openMenuAt(event, railActions.map((action) => ({
               id: 'rail:' + action.id,
@@ -12678,11 +13540,11 @@ window.__ModuleLoader__.load({
             }))),
           }, E(Icon, { name: 'more', size: 18 })))
         }
-        children.push(E('span', { key: 'gap', className: vertical ? 'dig-rail-gap' : 'dig-rail-gap-x' }))
+        children.push(E('span', { key: 'gap', className: vertical ? 'dgp-rail-gap' : 'dgp-rail-gap-x' }))
         children.push(E('button', {
           key: 'settings',
           type: 'button',
-          className: 'dig-rail-btn dig-rail-settings',
+          className: 'dgp-rail-btn dgp-rail-settings',
           'data-action': 'settings',
           // On a host that serves the row Config this button opens the plugin's own
           // settings page (where the card below the description edits the rail);
@@ -12694,7 +13556,7 @@ window.__ModuleLoader__.load({
             setRailSettings(true)
           },
         }, E(Icon, { name: 'settings', size: 18 })))
-        return E('div', { className: vertical ? 'dig-rail' : 'dig-rail-row', ref: railHostRef }, children)
+        return E('div', { className: vertical ? 'dgp-rail' : 'dgp-rail-row', ref: railHostRef }, children)
       }
 
       /* ---------- body per chrome ---------- */
@@ -12710,14 +13572,14 @@ window.__ModuleLoader__.load({
         /* The scan is still running: a neutral loading state, never the
            "no repository found" verdict (that text is reserved for a scan
            that actually came back empty). */
-        body = E('div', { className: 'dig-body', ref: bodyRef }, E('div', { className: 'dig-empty' }, t('status.loading')))
+        body = E('div', { className: 'dgp-body', ref: bodyRef }, E('div', { className: 'dgp-empty' }, t('status.loading')))
       } else if (repoRoot === null) {
-        body = E('div', { className: 'dig-body', ref: bodyRef }, E(RepoPicker, {
+        body = E('div', { className: 'dgp-body', ref: bodyRef }, E(RepoPicker, {
           t: t, cwd: cwd === undefined ? '' : cwd, repos: repoOptions, onPick: pickRepo,
         }))
       } else if (compact) {
-        body = E('div', { className: 'dig-body dig-body-compact', ref: bodyRef },
-          E('div', { className: 'dig-compact-bar' },
+        body = E('div', { className: 'dgp-body dgp-body-compact', ref: bodyRef },
+          E('div', { className: 'dgp-compact-bar' },
             E(Segmented, {
               value: view === 'detail' ? 'history' : view,
               onChange: (next) => { setView(next); setPatch(''); setDiffContext(null) },
@@ -12726,35 +13588,35 @@ window.__ModuleLoader__.load({
                 { id: 'history', label: t('seg.history') },
               ],
             }),
-            E('span', { className: 'dig-topbar-spacer' }),
+            E('span', { className: 'dgp-topbar-spacer' }),
             // Two-way on purpose: treeOpen is persisted, so a header button that
             // only rendered while the tree was OPEN left a folded tree with no way
             // back on this chrome (the rail now carries one too, for the others).
             E('button', {
               type: 'button',
-              className: 'dig-icon-btn' + (treeOpen ? ' dig-icon-btn-active' : ''),
+              className: 'dgp-icon-btn' + (treeOpen ? ' dgp-icon-btn-active' : ''),
               'data-action': 'tree',
               'aria-pressed': treeOpen ? 'true' : 'false',
               title: t('toolbar.tree'),
               onClick: () => foldTree(!treeOpen),
             }, E(Icon, { name: treeOpen ? 'eye' : 'eyeOff' }))),
-          treeOpen ? E('div', { className: 'dig-compact-tree', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues })) : null,
+          treeOpen ? E('div', { className: 'dgp-compact-tree', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues })) : null,
           treeOpen ? gutter('tree', 'prev') : null,
-          view === 'changes' ? changesPane : E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
+          view === 'changes' ? changesPane : E('div', { className: 'dgp-pane dgp-pane-main' }, historyPane, diffGutter, diffPane))
       } else if (columns) {
-        body = E('div', { className: 'dig-body dig-body-columns', ref: bodyRef },
-          treeOpen ? E('div', { className: 'dig-pane dig-pane-tree', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues })) : null,
+        body = E('div', { className: 'dgp-body dgp-body-columns', ref: bodyRef },
+          treeOpen ? E('div', { className: 'dgp-pane dgp-pane-tree', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues })) : null,
           treeOpen ? gutter('tree', 'prev') : null,
-          E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane),
+          E('div', { className: 'dgp-pane dgp-pane-main' }, historyPane, diffGutter, diffPane),
           gutter('changes', 'next'),
-          E('div', { className: 'dig-pane dig-pane-changes', 'data-pane': 'changes', style: paneStyle('changes') }, changesPane))
+          E('div', { className: 'dgp-pane dgp-pane-changes', 'data-pane': 'changes', style: paneStyle('changes') }, changesPane))
       } else {
-        body = E('div', { className: 'dig-body dig-body-stack', ref: bodyRef },
-          treeOpen ? E('div', { className: 'dig-pane dig-pane-tree-stack', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues })) : null,
+        body = E('div', { className: 'dgp-body dgp-body-stack', ref: bodyRef },
+          treeOpen ? E('div', { className: 'dgp-pane dgp-pane-tree-stack', 'data-pane': 'tree', style: paneStyle('tree') }, E(BranchTree, { t: t, branches: branches, favorites: favorites, onCheckout: checkout, onBranchMenu: branchMenu, onDeleteEntries: deleteBranchEntries, onCopyValues: copyValues })) : null,
           treeOpen ? gutter('tree', 'prev') : null,
-          E('div', { className: 'dig-pane dig-pane-changes-stack', 'data-pane': 'changes', style: paneStyle('changes') }, changesPane),
+          E('div', { className: 'dgp-pane dgp-pane-changes-stack', 'data-pane': 'changes', style: paneStyle('changes') }, changesPane),
           gutter('changes', 'prev'),
-          E('div', { className: 'dig-pane dig-pane-main' }, historyPane, diffGutter, diffPane))
+          E('div', { className: 'dgp-pane dgp-pane-main' }, historyPane, diffGutter, diffPane))
       }
 
       /* ---------- overlays ---------- */
@@ -13043,16 +13905,26 @@ window.__ModuleLoader__.load({
       // While a divider is being dragged the whole panel stops selecting text and
       // keeps the resize cursor, even though the pointer has left the 8px gutter.
       return E('div', {
-        className: 'dig-root'
-          + (compact ? ' dig-root-narrow' : '')
-          + (paneDragging === null ? '' : ' dig-pane-dragging' + (paneByWidth ? '-v' : '-h')),
+        className: 'dgp-root'
+          + (compact ? ' dgp-root-narrow' : '')
+          + (paneDragging === null ? '' : ' dgp-pane-dragging' + (paneByWidth ? '-v' : '-h')),
         ref: hostRef,
-      }, topBar,
-        columns === true || repoRoot === null ? null : renderRail(false),
+      }, view === 'repositories' ? E('div', { className: 'dgp-topbar dgp-source-header' },
+          E('span', { className: 'dgp-source-title' }, t('title')),
+          E('span', { className: 'dgp-topbar-spacer' }),
+          E('button', { type: 'button', className: 'dgp-icon-btn', 'data-action': 'refresh-all', title: t('toolbar.refresh'), 'aria-label': t('toolbar.refresh'), onClick: () => setTick((value) => value + 1) }, E(Icon, { name: 'refresh', size: 14 }))) : topBar,
+        view === 'repositories' || columns === true || repoRoot === null ? null : renderRail(false),
         banner, noteBanner,
-        E('div', { className: 'dig-shell' },
-          columns === true && repoRoot !== null ? renderRail(true) : null,
-          body),
+        E('div', { className: 'dgp-shell' },
+          view !== 'repositories' && columns === true && repoRoot !== null ? renderRail(true) : null,
+          E('div', { className: 'dgp-repositories-pane', hidden: view !== 'repositories' },
+            E(RepositoryList, {
+              key: JSON.stringify([cwd, sessionId]), t: t, repos: repoOptions, cwd: cwd, sessionId: sessionId,
+              initialRepoRoot: repoRoot, loading: (repoState === null || repoState.workspace !== cwd) && error === null,
+              visible: props.visible === true && view === 'repositories', refreshTick: tick + focusTick, autoRefreshMs: pollMs, commitSettings: commitSettings,
+              onWorkbench: pickRepo, onPreviewDiff: previewDiff, onOpenMenu: openMenuAt,
+            })),
+          view === 'repositories' ? null : body),
         gitOutput === null ? null : E(GitOutputDrawer, {
           t: t, entries: gitOutput,
           onRefresh: () => { void openGitOutput() },
@@ -13080,68 +13952,87 @@ window.__ModuleLoader__.load({
     const LANE_TRACE_RULES = []
     for (let lane = 0; lane < GRAPH_MAX_LANES; lane += 1) {
       LANE_TRACE_RULES.push(
-        '.dig-history-scroll[data-hover-lane="' + lane + '"] .dig-graph line:not([data-lane="' + lane + '"])'
-        + ',.dig-history-scroll[data-hover-lane="' + lane + '"] .dig-graph path:not([data-lane="' + lane + '"])'
-        + ',.dig-history-scroll[data-hover-lane="' + lane + '"] .dig-graph circle:not([data-lane="' + lane + '"])'
+        '.dgp-history-scroll[data-hover-lane="' + lane + '"] .dgp-graph line:not([data-lane="' + lane + '"])'
+        + ',.dgp-history-scroll[data-hover-lane="' + lane + '"] .dgp-graph path:not([data-lane="' + lane + '"])'
+        + ',.dgp-history-scroll[data-hover-lane="' + lane + '"] .dgp-graph circle:not([data-lane="' + lane + '"])'
         + '{stroke-opacity:.18;fill-opacity:.18}',
       )
     }
-    LANE_TRACE_RULES.push('.dig-graph line,.dig-graph path,.dig-graph circle{transition:stroke-opacity .15s,fill-opacity .15s}')
+    LANE_TRACE_RULES.push('.dgp-graph line,.dgp-graph path,.dgp-graph circle{transition:stroke-opacity .15s,fill-opacity .15s}')
     /* The rail refresh button spins while its fetch+refresh round-trip runs. */
-    LANE_TRACE_RULES.push('.dig-spin svg{animation:dig-spin-rotate .9s linear infinite}')
-    LANE_TRACE_RULES.push('@keyframes dig-spin-rotate{to{transform:rotate(360deg)}}')
+    LANE_TRACE_RULES.push('.dgp-spin svg{animation:dgp-spin-rotate .9s linear infinite}')
+    LANE_TRACE_RULES.push('@keyframes dgp-spin-rotate{to{transform:rotate(360deg)}}')
 
     const CSS = [
-      '.dig-root{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;background:transparent;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family,system-ui,sans-serif);font-size:13px;line-height:1.5;font-weight:600;overflow:hidden}',
-      '.dig-topbar{display:flex;align-items:center;gap:6px;padding:4px 6px;flex:none;min-width:0;border-bottom:1px solid var(--dsw-alias-border-l2);overflow:hidden}',
-      '.dig-topbar-spacer{flex:1;min-width:4px}',
-      '.dig-busy{color:var(--dsw-alias-label-tertiary);flex:none;white-space:nowrap}',
-      '.dig-track{color:var(--dsw-alias-label-secondary);flex:none;font-variant-numeric:tabular-nums;white-space:nowrap}',
-      '.dig-select-wrap{display:inline-flex;align-items:center;gap:4px;min-width:0;flex:0 1 auto;max-width:90%;color:var(--dsw-alias-label-secondary)}',
-      '.dig-select{appearance:none;-webkit-appearance:none;background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);color:var(--dsw-alias-label-primary);font:inherit;font-weight:500;padding:1px 6px;height:22px;max-width:min(280px,42%);min-width:0;cursor:pointer;text-overflow:ellipsis}',
-      '.dig-select:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-select:focus-visible{outline:1px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px}',
-      '.dig-select-btn{display:inline-flex;align-items:center;gap:4px;text-align:left;white-space:nowrap;overflow:hidden}',
-      '.dig-select-btn .dig-repo-name{flex:1;min-width:0;max-width:none}',
-      '.dig-select-repo{max-width:none}',
-      '.dig-select option,.dig-filter-select option{background:var(--dsw-alias-bg-layer-1,#22262e);color:var(--dsw-alias-label-primary,#e6e8ee)}',
+      '.dgp-repositories-pane{display:flex;flex:1;min-width:0;min-height:0;overflow:hidden}',
+      '.dgp-repositories-pane[hidden],.dgp-repository-body[hidden]{display:none}',
+      '.dgp-repositories{flex:1;min-width:0;overflow:auto;scrollbar-gutter:stable}',
+      '.dgp-source-title{font-weight:650;padding:2px 4px}',
+      '.dgp-repository{min-width:0;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-repository-head{display:flex;align-items:center;gap:4px;min-height:34px;padding:2px 8px 2px 4px;box-sizing:border-box}',
+      '.dgp-repository-toggle{display:flex;align-items:center;gap:6px;flex:1;min-width:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:4px 0}',
+      '.dgp-repository-toggle>.dgp-chevron,.dgp-repository-toggle>svg{flex:none}',
+      '.dgp-repository-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dgp-repository-branch{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:45%;color:var(--dsw-alias-label-secondary);font-size:11px;font-weight:450;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.dgp-repository-branch>svg{flex:none}',
+      '.dgp-repository-actions{display:inline-flex;gap:1px;flex:none}',
+      '.dgp-repository-count{flex:none;min-width:14px;text-align:center;font-variant-numeric:tabular-nums}',
+      '.dgp-repository-body .dgp-changes{height:320px;flex:none}',
+      '.dgp-repository-body .dgp-commit-box{order:-1;border-top:0;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-repository-body .dgp-textarea{height:50px;min-height:38px}',
+      '.dgp-repository-diff{max-height:340px;display:flex;flex-direction:column;overflow:auto}',
+      '.dgp-repository-toggle:hover{color:var(--dsw-alias-state-business-primary)}',
+      '.dgp-repository-toggle:focus-visible,.dgp-repository-actions button:focus-visible{outline:1px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px}',
+      '.dgp-root{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;background:transparent;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family,system-ui,sans-serif);font-size:13px;line-height:1.5;font-weight:600;overflow:hidden}',
+      '.dgp-topbar{display:flex;align-items:center;gap:6px;padding:4px 6px;flex:none;min-width:0;border-bottom:1px solid var(--dsw-alias-border-l2);overflow:hidden}',
+      '.dgp-topbar-spacer{flex:1;min-width:4px}',
+      '.dgp-busy{color:var(--dsw-alias-label-tertiary);flex:none;white-space:nowrap}',
+      '.dgp-track{color:var(--dsw-alias-label-secondary);flex:none;font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.dgp-select-wrap{display:inline-flex;align-items:center;gap:4px;min-width:0;flex:0 1 auto;max-width:90%;color:var(--dsw-alias-label-secondary)}',
+      '.dgp-select{appearance:none;-webkit-appearance:none;background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);color:var(--dsw-alias-label-primary);font:inherit;font-weight:500;padding:1px 6px;height:22px;max-width:min(280px,42%);min-width:0;cursor:pointer;text-overflow:ellipsis}',
+      '.dgp-select:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-select:focus-visible{outline:1px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px}',
+      '.dgp-select-btn{display:inline-flex;align-items:center;gap:4px;text-align:left;white-space:nowrap;overflow:hidden}',
+      '.dgp-select-btn .dgp-repo-name{flex:1;min-width:0;max-width:none}',
+      '.dgp-select-repo{max-width:none}',
+      '.dgp-select option,.dgp-filter-select option{background:var(--dsw-alias-bg-layer-1,#22262e);color:var(--dsw-alias-label-primary,#e6e8ee)}',
       /* Long branch names (the topbar picker): the cap lives on the WRAP (a
          direct topbar child, so the percentage resolves against the bar). The
          button grows a SECOND LINE instead of ellipsising — a sidebar is
          ~400px wide, and a 600px branch name simply cannot fit on one line,
          but two lines hold it (the user-facing rule: show the WHOLE name).
          The full name also rides on the wrapper's title. */
-      '.dig-select-branch{max-width:none;height:auto;min-height:22px;align-items:center}',
-      '.dig-select-branch .dig-repo-name{white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.3}',
-      '.dig-repo-static{display:inline-flex;align-items:center;gap:5px;min-width:0;color:var(--dsw-alias-label-secondary)}',
-      '.dig-repo-name{color:var(--dsw-alias-label-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:none}',
-      '.dig-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;padding:0;flex:none}',
-      '.dig-icon-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.dig-icon-btn:disabled{opacity:.4;cursor:default}',
-      '.dig-icon-btn-active{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}',
-      '.dig-banner{display:flex;align-items:center;gap:8px;padding:4px 8px;flex:none;color:var(--dsw-alias-state-error-primary)}',
-      '.dig-note{display:flex;align-items:center;gap:8px;padding:4px 8px;flex:none;color:var(--dsw-alias-label-secondary)}',
-      '.dig-banner-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}',
-      '.dig-shell{flex:1;min-height:0;display:flex;overflow:hidden}',
-      '.dig-rail{width:32px;flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;overflow:hidden;border-right:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-rail-gap{flex:1;min-height:2px}',
-      '.dig-rail-gap-x{flex:1;min-width:2px}',
-      '.dig-rail-row{display:flex;align-items:center;gap:2px;padding:3px 6px;flex:none;overflow:hidden;border-bottom:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-rail-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;padding:0;flex:none}',
-      '.dig-rail-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.dig-rail-btn:disabled{opacity:.28;cursor:default}',
-      '.dig-rail-btn-active{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 20%, transparent)}',
-      '.dig-rail-more,.dig-rail-settings{color:var(--dsw-alias-label-tertiary)}',
-      '.dig-rail-more:hover,.dig-rail-settings:hover{color:var(--dsw-alias-label-primary)}',
-      '.dig-tone-primary{color:var(--dsw-alias-label-primary)}',
-      '.dig-tone-secondary{color:var(--dsw-alias-label-secondary)}',
-      '.dig-tone-accent{color:var(--dsw-alias-brand-primary)}',
-      '.dig-tone-success{color:var(--dsw-alias-state-success-primary)}',
-      '.dig-tone-warn{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-tone-danger{color:var(--dsw-alias-state-error-primary)}',
-      '.dig-tone-violet{color:#b083f0}',
-      '.dig-tone-cyan{color:#59b0d6}',
-      '.dig-icon-btn-small{width:20px;height:20px;border-radius:var(--dsw-radius-xs,4px)}',
+      '.dgp-select-branch{max-width:none;height:auto;min-height:22px;align-items:center}',
+      '.dgp-select-branch .dgp-repo-name{white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.3}',
+      '.dgp-repo-static{display:inline-flex;align-items:center;gap:5px;min-width:0;color:var(--dsw-alias-label-secondary)}',
+      '.dgp-repo-name{color:var(--dsw-alias-label-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:none}',
+      '.dgp-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;padding:0;flex:none}',
+      '.dgp-icon-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.dgp-icon-btn:disabled{opacity:.4;cursor:default}',
+      '.dgp-icon-btn-active{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}',
+      '.dgp-banner{display:flex;align-items:center;gap:8px;padding:4px 8px;flex:none;color:var(--dsw-alias-state-error-primary)}',
+      '.dgp-note{display:flex;align-items:center;gap:8px;padding:4px 8px;flex:none;color:var(--dsw-alias-label-secondary)}',
+      '.dgp-banner-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}',
+      '.dgp-shell{flex:1;min-height:0;display:flex;overflow:hidden}',
+      '.dgp-rail{width:32px;flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;overflow:hidden;border-right:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-rail-gap{flex:1;min-height:2px}',
+      '.dgp-rail-gap-x{flex:1;min-width:2px}',
+      '.dgp-rail-row{display:flex;align-items:center;gap:2px;padding:3px 6px;flex:none;overflow:hidden;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-rail-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;padding:0;flex:none}',
+      '.dgp-rail-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.dgp-rail-btn:disabled{opacity:.28;cursor:default}',
+      '.dgp-rail-btn-active{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 20%, transparent)}',
+      '.dgp-rail-more,.dgp-rail-settings{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-rail-more:hover,.dgp-rail-settings:hover{color:var(--dsw-alias-label-primary)}',
+      '.dgp-tone-primary{color:var(--dsw-alias-label-primary)}',
+      '.dgp-tone-secondary{color:var(--dsw-alias-label-secondary)}',
+      '.dgp-tone-accent{color:var(--dsw-alias-brand-primary)}',
+      '.dgp-tone-success{color:var(--dsw-alias-state-success-primary)}',
+      '.dgp-tone-warn{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
+      '.dgp-tone-danger{color:var(--dsw-alias-state-error-primary)}',
+      '.dgp-tone-violet{color:#b083f0}',
+      '.dgp-tone-cyan{color:#59b0d6}',
+      '.dgp-icon-btn-small{width:20px;height:20px;border-radius:var(--dsw-radius-xs,4px)}',
       // A panel dragged narrower than COMPACT_MAX_WIDTH (the compact chrome) is the
       // case where 'nowrap + ellipsis' stops being readable: the overlays clamp
       // their own width, and their text wraps inside that box instead of clipping.
@@ -13149,294 +14040,312 @@ window.__ModuleLoader__.load({
       // section): one row per rail action, themed entirely by tokens.
       // The card shell below is the visual twin of the pc-card / dl-card /
       // gb-card pattern the sibling plugins draw.
-      '.dig-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md,12px);background:var(--dsw-alias-bg-layer-3);transition:border-color .16s,background .16s}',
-      '.dig-card:hover{border-color:var(--dsw-alias-label-dimmed)}',
-      '.dig-card.dig-card-open{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}',
-      '.dig-card-header{width:100%;appearance:none;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--dsw-radius-md,12px)}',
-      '.dig-card-header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}',
-      '.dig-card-header-flat{cursor:default}',
-      '.dig-card-head-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}',
-      '.dig-card-name{font-size:15px;font-weight:600;line-height:1.4;color:var(--dsw-alias-label-primary)}',
-      '.dig-card-desc{font-size:13px;line-height:1.5;color:var(--dsw-alias-label-tertiary)}',
-      '.dig-card-chevron{flex:none;display:inline-flex;color:var(--dsw-alias-label-tertiary);transition:transform .16s}',
-      '.dig-card-chevron.dig-card-chevron-open{transform:rotate(180deg)}',
-      '.dig-card-body{padding:8px 16px 16px}',
-      '.dig-card-page{max-width:640px}',
-      '.dig-settings{display:flex;flex-direction:column;gap:8px;min-width:0}',
-      '.dig-settings-head{display:flex;flex-direction:column;gap:2px}',
-      '.dig-settings-title{font-weight:600;color:var(--dsw-alias-label-primary)}',
-      '.dig-settings-hint{color:var(--dsw-alias-label-tertiary);font-weight:400}',
-      '.dig-settings-note{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-weight:400}',
-      '.dig-settings-note-hidden{display:none}',
-      '.dig-settings-error{color:var(--dsw-alias-state-error-primary);font-weight:400}',
-      '.dig-settings-subnote{color:var(--dsw-alias-label-tertiary);font-weight:400;font-size:12px}',
-      '.dig-settings-sub{margin-top:6px;font-weight:600;color:var(--dsw-alias-label-primary)}',
-      '.dig-settings-text{display:flex;flex-direction:column;gap:3px;min-width:0}',
-      '.dig-settings-text-label{color:var(--dsw-alias-label-secondary);font-weight:400}',
-      '.dig-settings-input{width:100%;box-sizing:border-box;font:inherit}',
-      '.dig-commit-ai{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}',
-      '.dig-commit-ai-hint{color:var(--dsw-alias-label-tertiary);font-size:11px}',
-      '.dig-commit-ai-hint-block{flex:1 0 100%;font-size:11px}',
-      '.dig-commit-ai-note{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-size:11px;margin-bottom:4px;word-break:break-word}',
-      '.dig-settings-list{display:flex;flex-direction:column;gap:2px;max-height:min(46vh,360px);overflow:auto;padding:2px;border:1px solid var(--dsw-alias-hairline,var(--dsw-alias-border-l1));border-radius:var(--dsw-radius-sm,8px)}',
-      '.dig-settings-row{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:calc(var(--dsw-radius-sm,8px) - 2px);cursor:pointer;min-width:0}',
-      '.dig-settings-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-settings-check{flex:none;accent-color:var(--dsw-alias-brand-primary)}',
-      '.dig-settings-glyph{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
-      '.dig-settings-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
-      '.dig-root-narrow .dig-settings-label{white-space:normal}',
-      /* Collapsible setting sections (hand-drawn, same pattern as dsh-gitbash-shell v0.38.4). */
-      '.dig-fold{border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);padding:4px 12px 12px;background:var(--dsw-alias-bg-layer-1,transparent)}',
-      '.dig-fold .dig-stack{padding-top:10px}',
-      '.dig-foldHead{display:flex;align-items:center;gap:8px;width:100%;appearance:none;background:none;border:0;padding:6px 0;font:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--dsw-alias-label-secondary);cursor:pointer;text-align:left}',
-      '.dig-foldHead:hover{color:var(--dsw-alias-label-primary)}',
-      '.dig-foldChevron{flex:none;display:inline-block;color:var(--dsw-alias-label-tertiary);transition:transform .16s}',
-      '.dig-foldChevron.dig-foldChevronOpen{transform:rotate(90deg)}',
-      '.dig-foldTitle{min-width:0;overflow-wrap:anywhere}',
-      '.dig-root-narrow .dig-menu-item{white-space:normal}',
-      '.dig-root-narrow .dig-toast-text{white-space:normal}',
-      '.dig-toasts{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px;z-index:80;max-width:min(340px,92%)}',
-      '.dig-toast{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));border:0;box-shadow:var(--dsw-elevation-prominent,0 8px 22px rgba(0,0,0,.32))}',
-      '.dig-toast-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
-      '.dig-toast-warn .dig-toast-icon{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-toast-ok .dig-toast-icon{color:var(--dsw-alias-state-success-primary)}',
-      '.dig-toast-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
-      '.dig-toast-action{border:none;background:transparent;color:var(--dsw-alias-brand-primary);font:inherit;font-weight:600;cursor:pointer;padding:0 2px;flex:none}',
-      '.dig-toast-action:hover{text-decoration:underline}',
-      '.dig-opchip{flex:none;padding:0 6px;border-radius:999px;corner-shape:round;background:color-mix(in srgb, var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary)) 20%, transparent);color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-weight:500;white-space:nowrap}',
-      '.dig-rail-list{display:flex;flex-direction:column;gap:2px;max-height:min(50vh,300px);overflow:auto;padding:2px;border:1px solid var(--dsw-alias-hairline,var(--dsw-alias-border-l1));border-radius:var(--dsw-radius-sm,8px)}',
-      '.dig-rail-item{display:flex;align-items:center;gap:6px;padding:2px 4px;border-radius:calc(var(--dsw-radius-sm,8px) - 2px)}',
-      '.dig-rail-item:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-rail-item-off{opacity:.5}',
-      '.dig-rail-item-drag{outline:1px solid var(--dsw-alias-brand-primary)}',
-      '.dig-rail-grip{display:inline-flex;color:var(--dsw-alias-label-dimmed,var(--dsw-alias-label-tertiary));cursor:grab;flex:none}',
-      '.dig-rail-item-icon{display:inline-flex;flex:none}',
-      '.dig-rail-item-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
-      '.dig-body{flex:1;min-height:0;display:flex;overflow:hidden}',
-      '.dig-body-columns{flex-direction:row}',
-      '.dig-body-stack{flex-direction:column}',
-      '.dig-body-compact{flex-direction:column}',
-      '.dig-pane{display:flex;flex-direction:column;min-height:0;min-width:0}',
-      '.dig-pane-tree{width:200px;flex:none;border-right:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-pane-tree-stack{max-height:36%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-pane-main{flex:1;min-width:0}',
-      '.dig-pane-changes{width:290px;flex:none;border-left:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-pane-changes-stack{max-height:46%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-compact-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;flex:none}',
-      '.dig-compact-tree{max-height:42%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md,12px);background:var(--dsw-alias-bg-layer-3);transition:border-color .16s,background .16s}',
+      '.dgp-card:hover{border-color:var(--dsw-alias-label-dimmed)}',
+      '.dgp-card.dgp-card-open{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}',
+      '.dgp-card-header{width:100%;appearance:none;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--dsw-radius-md,12px)}',
+      '.dgp-card-header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}',
+      '.dgp-card-header-flat{cursor:default}',
+      '.dgp-card-head-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}',
+      '.dgp-card-name{font-size:15px;font-weight:600;line-height:1.4;color:var(--dsw-alias-label-primary)}',
+      '.dgp-card-desc{font-size:13px;line-height:1.5;color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-card-chevron{flex:none;display:inline-flex;color:var(--dsw-alias-label-tertiary);transition:transform .16s}',
+      '.dgp-card-chevron.dgp-card-chevron-open{transform:rotate(180deg)}',
+      '.dgp-card-body{padding:8px 16px 16px}',
+      '.dgp-card-page{max-width:640px}',
+      '.dgp-settings{display:flex;flex-direction:column;gap:16px;min-width:0}',
+      '.dgp-settings-head{display:flex;flex-direction:column;gap:2px}',
+      '.dgp-settings-title{font-weight:600;color:var(--dsw-alias-label-primary)}',
+      '.dgp-settings-hint{color:var(--dsw-alias-label-tertiary);font-weight:400;font-size:12px;line-height:1.6}',
+      '.dgp-settings-note{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-weight:400}',
+      '.dgp-settings-note-hidden{display:none}',
+      '.dgp-settings-error{color:var(--dsw-alias-state-error-primary);font-weight:400}',
+      '.dgp-settings-subnote{color:var(--dsw-alias-label-tertiary);font-weight:400;font-size:11px;line-height:1.5;overflow-wrap:anywhere}',
+      '.dgp-settings-sub{margin-top:6px;font-weight:600;color:var(--dsw-alias-label-primary)}',
+      /* Toggle/select fields render as the search-free-style cards: one rounded
+         surface per setting, title line + live state line, control on the right. */
+      '.dgp-settings-field{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-1,transparent));min-width:0}',
+      '.dgp-settings-text{display:flex;flex-direction:column;gap:6px;min-width:0;padding:12px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-1,transparent))}',
+      '.dgp-settings-text-label{color:var(--dsw-alias-label-primary);font-weight:500;font-size:13px}',
+      '.dgp-settings-input{width:100%;box-sizing:border-box;font:inherit;background:var(--dsw-alias-bg-layer-1,transparent)}',
+      '.dgp-commit-ai{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}',
+      '.dgp-commit-ai-hint{color:var(--dsw-alias-label-tertiary);font-size:11px}',
+      '.dgp-commit-ai-hint-block{flex:1 0 100%;font-size:11px}',
+      '.dgp-commit-ai-note{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-size:11px;margin-bottom:4px;word-break:break-word}',
+      /* The action-rail switch list: a responsive grid of mini cards (two-up on
+         the plugin page, one-up in the narrow panel) instead of a bordered
+         scroll box. */
+      '.dgp-settings-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:8px;padding:0;border:0}',
+      '.dgp-settings-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-1,transparent));cursor:pointer;min-width:0;transition:border-color .16s,background .16s}',
+      '.dgp-settings-row:hover{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-settings-field .dgp-settings-row{border:0;background:none;padding:2px 0;border-radius:calc(var(--dsw-radius-sm,8px) - 2px)}',
+      '.dgp-settings-field .dgp-settings-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      /* The checkbox VISUALLY becomes the 36x20 pill switch (search-free pattern)
+         while staying a real <input type=checkbox>: probes, the optimistic-write
+         logic and keyboard focus all keep working unchanged. */
+      '.dgp-settings-check{appearance:none;-webkit-appearance:none;flex:none;width:36px;height:20px;margin:0;padding:0;border:0;border-radius:999px;corner-shape:round;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-fill-secondary));position:relative;cursor:pointer;transition:background .16s}',
+      '.dgp-settings-check::before{content:\'\';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .16s}',
+      '.dgp-settings-check:checked{background:var(--dsw-alias-brand-primary)}',
+      '.dgp-settings-check:checked::before{left:18px}',
+      '.dgp-settings-check:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
+      '.dgp-settings-check:disabled{opacity:.5;cursor:default}',
+      '.dgp-settings-glyph{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
+      '.dgp-settings-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--dsw-alias-label-primary)}',
+      '.dgp-root-narrow .dgp-settings-label{white-space:normal}',
+      /* Collapsible setting sections (hand-drawn, same pattern as dsh-gitbash-shell v0.38.4).
+         The fold is a bare group now — the title row and the cards inside carry
+         the surface; no nested box-in-box. */
+      '.dgp-fold{border:0;padding:0;background:none}',
+      '.dgp-fold .dgp-stack{padding-top:10px;display:flex;flex-direction:column;gap:8px}',
+      '.dgp-foldHead{display:flex;align-items:center;gap:8px;width:100%;appearance:none;background:none;border:0;padding:4px 0;font:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left}',
+      '.dgp-foldHead:hover{color:var(--dsw-alias-brand-primary)}',
+      '.dgp-foldChevron{flex:none;display:inline-block;color:var(--dsw-alias-label-tertiary);transition:transform .16s}',
+      '.dgp-foldChevron.dgp-foldChevronOpen{transform:rotate(90deg)}',
+      '.dgp-foldTitle{min-width:0;overflow-wrap:anywhere}',
+      '.dgp-root-narrow .dgp-menu-item{white-space:normal}',
+      '.dgp-root-narrow .dgp-toast-text{white-space:normal}',
+      '.dgp-toasts{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px;z-index:80;max-width:min(340px,92%)}',
+      '.dgp-toast{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));border:0;box-shadow:var(--dsw-elevation-prominent,0 8px 22px rgba(0,0,0,.32))}',
+      '.dgp-toast-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
+      '.dgp-toast-warn .dgp-toast-icon{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
+      '.dgp-toast-ok .dgp-toast-icon{color:var(--dsw-alias-state-success-primary)}',
+      '.dgp-toast-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
+      '.dgp-toast-action{border:none;background:transparent;color:var(--dsw-alias-brand-primary);font:inherit;font-weight:600;cursor:pointer;padding:0 2px;flex:none}',
+      '.dgp-toast-action:hover{text-decoration:underline}',
+      '.dgp-opchip{flex:none;padding:0 6px;border-radius:999px;corner-shape:round;background:color-mix(in srgb, var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary)) 20%, transparent);color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-weight:500;white-space:nowrap}',
+      '.dgp-rail-list{display:flex;flex-direction:column;gap:2px;max-height:min(50vh,300px);overflow:auto;padding:2px;border:1px solid var(--dsw-alias-hairline,var(--dsw-alias-border-l1));border-radius:var(--dsw-radius-sm,8px)}',
+      '.dgp-rail-item{display:flex;align-items:center;gap:6px;padding:2px 4px;border-radius:calc(var(--dsw-radius-sm,8px) - 2px)}',
+      '.dgp-rail-item:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-rail-item-off{opacity:.5}',
+      '.dgp-rail-item-drag{outline:1px solid var(--dsw-alias-brand-primary)}',
+      '.dgp-rail-grip{display:inline-flex;color:var(--dsw-alias-label-dimmed,var(--dsw-alias-label-tertiary));cursor:grab;flex:none}',
+      '.dgp-rail-item-icon{display:inline-flex;flex:none}',
+      '.dgp-rail-item-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
+      '.dgp-body{flex:1;min-height:0;display:flex;overflow:hidden}',
+      '.dgp-body-columns{flex-direction:row}',
+      '.dgp-body-stack{flex-direction:column}',
+      '.dgp-body-compact{flex-direction:column}',
+      '.dgp-pane{display:flex;flex-direction:column;min-height:0;min-width:0}',
+      '.dgp-pane-tree{width:200px;flex:none;border-right:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-pane-tree-stack{max-height:36%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-pane-main{flex:1;min-width:0}',
+      '.dgp-pane-changes{width:290px;flex:none;border-left:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-pane-changes-stack{max-height:46%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-compact-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;flex:none}',
+      '.dgp-compact-tree{max-height:42%;flex:none;border-bottom:1px solid var(--dsw-alias-border-l2)}',
       // A divider: an 8px hit area (a fingertip needs it) painted as a 1px hairline
       // that lights up on hover, focus or while dragging. touch-action:none is what
       // makes a touch drag resize the pane instead of scrolling the panel.
-      '.dig-gutter{flex:none;align-self:stretch;position:relative;z-index:1;touch-action:none;background:transparent;border:0;padding:0;cursor:col-resize}',
-      '.dig-gutter-v{width:8px}',
-      '.dig-gutter-h{height:8px;cursor:row-resize}',
-      '.dig-gutter::after{content:"";position:absolute;background:var(--dsw-alias-hairline,var(--dsw-alias-border-l1));transition:background .12s ease}',
-      '.dig-gutter-v::after{top:0;bottom:0;left:50%;width:1px;margin-left:-.5px}',
-      '.dig-gutter-h::after{left:0;right:0;top:50%;height:1px;margin-top:-.5px}',
-      '.dig-gutter:hover::after,.dig-gutter:focus-visible::after,.dig-gutter-active::after{background:var(--dsw-alias-brand-primary)}',
-      '.dig-gutter:focus-visible{outline:1px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px}',
-      '.dig-pane-dragging,.dig-pane-dragging *{user-select:none}',
-      '.dig-pane-dragging-v{cursor:col-resize}',
-      '.dig-pane-dragging-h{cursor:row-resize}',
-      '.dig-seg{display:inline-flex;gap:2px;padding:2px;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-interactive-bg-hover);flex:none}',
-      '.dig-seg-item{border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-weight:500;padding:2px 10px;border-radius:calc(var(--dsw-radius-sm,8px) - 2px);cursor:pointer;white-space:nowrap}',
-      '.dig-seg-item:hover{color:var(--dsw-alias-label-primary)}',
-      '.dig-seg-item[data-active="true"]{background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary)}',
-      '.dig-search{padding:4px 6px;flex:none}',
-      '.dig-input{width:100%;box-sizing:border-box;padding:4px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
-      '.dig-input::placeholder{color:var(--dsw-alias-label-tertiary)}',
-      '.dig-input:focus{border-color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-input-compact{padding:3px 6px}',
-      '.dig-picker{display:flex;flex-direction:column;gap:2px;padding:12px;overflow:auto;flex:1;min-height:0}',
-      '.dig-picker-title{color:var(--dsw-alias-label-primary);font-weight:600;margin-bottom:2px}',
-      '.dig-picker-sub{color:var(--dsw-alias-label-tertiary);margin-bottom:8px;word-break:break-all}',
-      '.dig-picker-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;padding:6px 8px;border-radius:var(--dsw-radius-sm,8px);cursor:pointer}',
-      '.dig-picker-row:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-brand-primary)}',
-      '.dig-picker-icon{display:inline-flex;color:var(--dsw-alias-label-secondary);flex:none}',
-      '.dig-picker-name{flex:none;font-weight:600}',
-      '.dig-picker-kind{color:var(--dsw-alias-label-tertiary);flex:none}',
-      '.dig-picker-path{color:var(--dsw-alias-label-tertiary);margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%}',
-      '.dig-tree{display:flex;flex-direction:column;min-height:0;flex:1}',
-      '.dig-tree-scroll{flex:1;overflow:auto;padding-bottom:6px}',
-      '.dig-section{display:flex;flex-direction:column}',
-      '.dig-section-head{display:flex;align-items:center;gap:4px;width:100%;padding:3px 8px;border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-weight:600;cursor:pointer;text-align:left}',
-      '.dig-section-head-static{cursor:default;padding-left:20px}',
-      '.dig-section-head:hover{color:var(--dsw-alias-label-primary)}',
+      '.dgp-gutter{flex:none;align-self:stretch;position:relative;z-index:1;touch-action:none;background:transparent;border:0;padding:0;cursor:col-resize}',
+      '.dgp-gutter-v{width:8px}',
+      '.dgp-gutter-h{height:8px;cursor:row-resize}',
+      '.dgp-gutter::after{content:"";position:absolute;background:var(--dsw-alias-hairline,var(--dsw-alias-border-l1));transition:background .12s ease}',
+      '.dgp-gutter-v::after{top:0;bottom:0;left:50%;width:1px;margin-left:-.5px}',
+      '.dgp-gutter-h::after{left:0;right:0;top:50%;height:1px;margin-top:-.5px}',
+      '.dgp-gutter:hover::after,.dgp-gutter:focus-visible::after,.dgp-gutter-active::after{background:var(--dsw-alias-brand-primary)}',
+      '.dgp-gutter:focus-visible{outline:1px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px}',
+      '.dgp-pane-dragging,.dgp-pane-dragging *{user-select:none}',
+      '.dgp-pane-dragging-v{cursor:col-resize}',
+      '.dgp-pane-dragging-h{cursor:row-resize}',
+      '.dgp-seg{display:inline-flex;gap:2px;padding:2px;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-interactive-bg-hover);flex:none}',
+      '.dgp-seg-item{border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-weight:500;padding:2px 10px;border-radius:calc(var(--dsw-radius-sm,8px) - 2px);cursor:pointer;white-space:nowrap}',
+      '.dgp-seg-item:hover{color:var(--dsw-alias-label-primary)}',
+      '.dgp-seg-item[data-active="true"]{background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary)}',
+      '.dgp-search{padding:4px 6px;flex:none}',
+      '.dgp-input{width:100%;box-sizing:border-box;padding:4px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
+      '.dgp-input::placeholder{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-input:focus{border-color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary))}',
+      '.dgp-input-compact{padding:3px 6px}',
+      '.dgp-picker{display:flex;flex-direction:column;gap:2px;padding:12px;overflow:auto;flex:1;min-height:0}',
+      '.dgp-picker-title{color:var(--dsw-alias-label-primary);font-weight:600;margin-bottom:2px}',
+      '.dgp-picker-sub{color:var(--dsw-alias-label-tertiary);margin-bottom:8px;word-break:break-all}',
+      '.dgp-picker-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;padding:6px 8px;border-radius:var(--dsw-radius-sm,8px);cursor:pointer}',
+      '.dgp-picker-row:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-brand-primary)}',
+      '.dgp-picker-icon{display:inline-flex;color:var(--dsw-alias-label-secondary);flex:none}',
+      '.dgp-picker-name{flex:none;font-weight:600}',
+      '.dgp-picker-kind{color:var(--dsw-alias-label-tertiary);flex:none}',
+      '.dgp-picker-path{color:var(--dsw-alias-label-tertiary);margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%}',
+      '.dgp-tree{display:flex;flex-direction:column;min-height:0;flex:1}',
+      '.dgp-tree-scroll{flex:1;overflow:auto;padding-bottom:6px}',
+      '.dgp-section{display:flex;flex-direction:column}',
+      '.dgp-section-head{display:flex;align-items:center;gap:4px;width:100%;padding:3px 8px;border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-weight:600;cursor:pointer;text-align:left}',
+      '.dgp-section-head-static{cursor:default;padding-left:20px}',
+      '.dgp-section-head:hover{color:var(--dsw-alias-label-primary)}',
       // The header became a DIV (it now holds buttons), and a div is content-box
       // while a button is border-box: without this, width:100% plus its own padding
       // overflowed the pane by 16px and clipped the last toolbar icon (reported on
       // v0.3.8).
-      '.dig-changes-head{cursor:default;gap:2px;box-sizing:border-box}',
-      '.dig-section-toggle{display:flex;align-items:center;gap:4px;flex:1;min-width:0;padding:0;border:none;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;text-align:left}',
-      '.dig-folder{display:flex;flex-direction:column}',
-      '.dig-branch-folder{display:flex;flex-direction:column}',
-      '.dig-row-picked{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}',
-      '.dig-folder-head{display:flex;align-items:center;gap:6px;width:100%;padding:1px 8px 1px 4px;height:14px;border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11px;cursor:pointer;text-align:left}',
-      '.dig-folder-head:hover{color:var(--dsw-alias-label-primary)}',
-      '.dig-folder-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.dig-count{margin-left:auto;opacity:.6;font-weight:400}',
-      '.dig-chevron{display:inline-flex;transform:rotate(-90deg);transition:transform .12s ease}',
-      '.dig-chevron-open{transform:rotate(0deg)}',
-      '.dig-row{display:flex;align-items:center;gap:5px;padding:2px 8px;cursor:pointer;white-space:nowrap;overflow:hidden}',
-      '.dig-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-row-head{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-row-selected{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}',
-      '.dig-row-remote .dig-row-label{color:var(--dsw-alias-label-secondary);font-weight:500}',
-      '.dig-row-tag .dig-row-label{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-weight:500}',
-      '.dig-row-head .dig-row-label{font-weight:600}',
-      '.dig-row-icon{display:inline-flex;flex:none;opacity:.9}',
-      '.dig-row-label{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;font-weight:600}',
-      '.dig-row-sub{color:var(--dsw-alias-label-tertiary);font-size:11px;flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis}',
-      '.dig-row-dir{margin-left:auto;opacity:.75}',
-      '.dig-badge{font-size:10px;padding:0 5px;border-radius:999px;corner-shape:round;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);flex:none}',
+      '.dgp-changes-head{cursor:default;gap:2px;box-sizing:border-box}',
+      '.dgp-section-toggle{display:flex;align-items:center;gap:4px;flex:1;min-width:0;padding:0;border:none;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;text-align:left}',
+      '.dgp-folder{display:flex;flex-direction:column}',
+      '.dgp-branch-folder{display:flex;flex-direction:column}',
+      '.dgp-row-picked{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}',
+      '.dgp-folder-head{display:flex;align-items:center;gap:6px;width:100%;padding:1px 8px 1px 4px;height:14px;border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11px;cursor:pointer;text-align:left}',
+      '.dgp-folder-head:hover{color:var(--dsw-alias-label-primary)}',
+      '.dgp-folder-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dgp-count{margin-left:auto;opacity:.6;font-weight:400}',
+      '.dgp-chevron{display:inline-flex;transform:rotate(-90deg);transition:transform .12s ease}',
+      '.dgp-chevron-open{transform:rotate(0deg)}',
+      '.dgp-row{display:flex;align-items:center;gap:5px;padding:2px 8px;cursor:pointer;white-space:nowrap;overflow:hidden}',
+      '.dgp-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-row-head{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
+      '.dgp-row-selected{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}',
+      '.dgp-row-remote .dgp-row-label{color:var(--dsw-alias-label-secondary);font-weight:500}',
+      '.dgp-row-tag .dgp-row-label{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary));font-weight:500}',
+      '.dgp-row-head .dgp-row-label{font-weight:600}',
+      '.dgp-row-icon{display:inline-flex;flex:none;opacity:.9}',
+      '.dgp-row-label{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;font-weight:600}',
+      '.dgp-row-sub{color:var(--dsw-alias-label-tertiary);font-size:11px;flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis}',
+      '.dgp-row-dir{margin-left:auto;opacity:.75}',
+      '.dgp-badge{font-size:10px;padding:0 5px;border-radius:999px;corner-shape:round;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);flex:none}',
       /* Ahead/behind colours + size (user request): pending pushes read green,
          pending pulls read blue — the same semantics in the tree rows and the
          top bar. 12px/600 keeps the counts legible at a glance. */
-      '.dig-badge-ahead,.dig-track-ahead{color:var(--dsw-alias-state-success-primary);font-size:12px;font-weight:600}',
-      '.dig-badge-behind,.dig-track-behind{color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary));font-size:12px;font-weight:600}',
-      '.dig-badge.dig-badge-ahead,.dig-badge.dig-badge-behind{padding:0 6px}',
-      '.dig-badge-muted{opacity:.8}',
-      '.dig-badge-worktree{padding:0 3px;display:inline-flex;align-items:center;height:14px}',
-      '.dig-history{display:flex;flex-direction:column;min-height:0;flex:1}',
-      '.dig-history-scroll{flex:1;overflow:auto}',
-      '.dig-commit{display:flex;align-items:center;gap:6px;padding:1px 8px 1px 0;cursor:pointer;height:26px;overflow:hidden}',
-      '.dig-commit:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-commit-selected{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}',
-      '.dig-graph{flex:none}',
-      '.dig-commit-date{color:var(--dsw-alias-label-tertiary);flex:none;width:54px;font-variant-numeric:tabular-nums;font-weight:500}',
-      '.dig-commit-author{color:var(--dsw-alias-label-secondary);flex:none;width:96px;overflow:hidden;text-overflow:ellipsis;font-weight:500}',
-      '.dig-commit-subject{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}',
-      '.dig-commit-fill{flex:1 1 0;min-width:0}',
-      '.dig-ref{font-size:10px;padding:0 5px;border-radius:999px;corner-shape:round;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);flex:none;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}',
-      '.dig-ref-head{color:var(--dsw-alias-state-success-primary)}',
-      '.dig-ref-local{color:var(--dsw-alias-brand-primary)}',
-      '.dig-ref-remote{color:#b083f0}',
-      '.dig-ref-tag{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-ref-more{color:var(--dsw-alias-label-tertiary);cursor:pointer}',
-      '.dig-filters{display:flex;align-items:center;gap:4px;padding:4px 6px;flex:none;min-width:0;overflow-x:auto;overflow-y:hidden;border-bottom:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-filter-text{flex:1 1 90px;min-width:80px;width:auto}',
-      '.dig-filter-select{flex:none;max-width:118px;appearance:none;-webkit-appearance:none;background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);color:var(--dsw-alias-label-secondary);font:inherit;font-weight:500;height:22px;padding:0 4px;cursor:pointer;text-overflow:ellipsis}',
-      '.dig-filter-select:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.dig-filter-select{display:inline-flex;align-items:center;gap:3px}',
-      '.dig-filter-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:96px}',
-      '.dig-filter-on{color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary)}',
-      '.dig-filter-path{flex:0 1 112px;min-width:70px;display:flex}',
-      '.dig-load-more{margin:6px auto;display:block;padding:3px 12px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}',
-      '.dig-load-more:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.dig-empty{padding:14px;text-align:center;color:var(--dsw-alias-label-tertiary);font-weight:500}',
-      '.dig-changes{display:flex;flex-direction:column;min-height:0;flex:1;position:relative}',
-      '.dig-changes-body{display:flex;flex-direction:column;min-height:0;flex:1}',
-      '.dig-changes-list{flex:1;overflow:auto;min-height:0}',
+      '.dgp-badge-ahead,.dgp-track-ahead{color:var(--dsw-alias-state-success-primary);font-size:12px;font-weight:600}',
+      '.dgp-badge-behind,.dgp-track-behind{color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary));font-size:12px;font-weight:600}',
+      '.dgp-badge.dgp-badge-ahead,.dgp-badge.dgp-badge-behind{padding:0 6px}',
+      '.dgp-badge-muted{opacity:.8}',
+      '.dgp-badge-worktree{padding:0 3px;display:inline-flex;align-items:center;height:14px}',
+      '.dgp-history{display:flex;flex-direction:column;min-height:0;flex:1}',
+      '.dgp-history-scroll{flex:1;overflow:auto}',
+      '.dgp-commit{display:flex;align-items:center;gap:6px;padding:1px 8px 1px 0;cursor:pointer;height:26px;overflow:hidden}',
+      '.dgp-commit:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-commit-selected{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}',
+      '.dgp-graph{flex:none}',
+      '.dgp-commit-date{color:var(--dsw-alias-label-tertiary);flex:none;width:54px;font-variant-numeric:tabular-nums;font-weight:500}',
+      '.dgp-commit-author{color:var(--dsw-alias-label-secondary);flex:none;width:96px;overflow:hidden;text-overflow:ellipsis;font-weight:500}',
+      '.dgp-commit-subject{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}',
+      '.dgp-commit-fill{flex:1 1 0;min-width:0}',
+      '.dgp-ref{font-size:10px;padding:0 5px;border-radius:999px;corner-shape:round;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);flex:none;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}',
+      '.dgp-ref-head{color:var(--dsw-alias-state-success-primary)}',
+      '.dgp-ref-local{color:var(--dsw-alias-brand-primary)}',
+      '.dgp-ref-remote{color:#b083f0}',
+      '.dgp-ref-tag{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
+      '.dgp-ref-more{color:var(--dsw-alias-label-tertiary);cursor:pointer}',
+      '.dgp-filters{display:flex;align-items:center;gap:4px;padding:4px 6px;flex:none;min-width:0;overflow-x:auto;overflow-y:hidden;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-filter-text{flex:1 1 90px;min-width:80px;width:auto}',
+      '.dgp-filter-select{flex:none;max-width:118px;appearance:none;-webkit-appearance:none;background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);color:var(--dsw-alias-label-secondary);font:inherit;font-weight:500;height:22px;padding:0 4px;cursor:pointer;text-overflow:ellipsis}',
+      '.dgp-filter-select:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.dgp-filter-select{display:inline-flex;align-items:center;gap:3px}',
+      '.dgp-filter-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:96px}',
+      '.dgp-filter-on{color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary)}',
+      '.dgp-filter-path{flex:0 1 112px;min-width:70px;display:flex}',
+      '.dgp-load-more{margin:6px auto;display:block;padding:3px 12px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}',
+      '.dgp-load-more:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.dgp-empty{padding:14px;text-align:center;color:var(--dsw-alias-label-tertiary);font-weight:500}',
+      '.dgp-changes{display:flex;flex-direction:column;min-height:0;flex:1;position:relative}',
+      '.dgp-changes-body{display:flex;flex-direction:column;min-height:0;flex:1}',
+      '.dgp-changes-list{flex:1;overflow:auto;min-height:0}',
       /* Multi-select chrome (issue #13). The marquee box is anchored to the
-         VIEWPORT-space .dig-changes (invariant 13: position:fixed would be
+         VIEWPORT-space .dgp-changes (invariant 13: position:fixed would be
          captured by the workbench's contain:layout and flung off-panel). */
-      '.dig-marquee{position:absolute;border:1px solid var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent);pointer-events:none;z-index:6}',
-      '.dig-selection-bar{display:flex;align-items:center;gap:12px;padding:3px 10px;font-size:11px;background:var(--dsw-alias-interactive-bg-hover);border-bottom:1px solid var(--dsw-alias-border-subtle,transparent)}',
-      '.dig-selection-bar .dig-link{margin-left:0}',
-      '.dig-selection-bar .dig-link-danger{color:var(--dsw-alias-state-error-primary)}',
-      '.dig-selection-count{color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.dgp-marquee{position:absolute;border:1px solid var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent);pointer-events:none;z-index:6}',
+      '.dgp-selection-bar{display:flex;align-items:center;gap:12px;padding:3px 10px;font-size:11px;background:var(--dsw-alias-interactive-bg-hover);border-bottom:1px solid var(--dsw-alias-border-subtle,transparent)}',
+      '.dgp-selection-bar .dgp-link{margin-left:0}',
+      '.dgp-selection-bar .dgp-link-danger{color:var(--dsw-alias-state-error-primary)}',
+      '.dgp-selection-count{color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       /* Focusable lists keep their own selection highlight as the focus
          indicator, so the container ring is suppressed. */
-      '.dig-changes-list:focus-visible,.dig-tree:focus-visible,.dig-history-scroll:focus-visible{outline:none}',
-      '.dig-group{display:flex;flex-direction:column}',
-      '.dig-group-head{display:flex;align-items:center;gap:8px;padding:2px 8px;height:17px;color:var(--dsw-alias-label-secondary);font-size:11px;font-weight:600}',
-      '.dig-link{margin-left:auto;border:none;background:transparent;color:var(--dsw-alias-brand-primary);font:inherit;cursor:pointer;padding:0;flex:none}',
-      '.dig-link:hover{text-decoration:underline}',
-      '.dig-row-file{gap:6px;height:20px}',
-      '.dig-file-status{flex:none;width:14px;text-align:center;font-weight:700;font-size:10px;color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-label-secondary))}',
-      '.dig-file-status-A{color:var(--dsw-alias-state-success-primary)}',
-      '.dig-file-status-D{color:var(--dsw-alias-state-error-primary)}',
-      '.dig-file-status-R{color:var(--dsw-alias-brand-primary)}',
-      '.dig-file-status-U{color:var(--dsw-alias-label-tertiary)}',
-      '.dig-file-status-I{color:var(--dsw-alias-label-tertiary)}',
-      '.dig-stat-add{color:var(--dsw-alias-state-success-primary);flex:none;font-variant-numeric:tabular-nums}',
-      '.dig-stat-del{color:var(--dsw-alias-state-error-primary);flex:none;font-variant-numeric:tabular-nums}',
-      '.dig-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:var(--dsw-radius-xs,4px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;flex:none;padding:0}',
-      '.dig-row:hover .dig-mini{opacity:1}',
-      '.dig-mini:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.dig-commit-box{flex:none;padding:6px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-commit-box-compact{flex-direction:row;align-items:center;gap:6px;padding:4px 6px;flex-wrap:wrap}',
-      '.dig-textarea{width:100%;box-sizing:border-box;min-height:50px;resize:vertical;padding:5px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
-      '.dig-textarea::placeholder{color:var(--dsw-alias-label-tertiary)}',
-      '.dig-textarea:focus{border-color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-commit-actions{display:flex;align-items:center;gap:8px}',
-      '.dig-check{display:inline-flex;align-items:center;gap:4px;color:var(--dsw-alias-label-secondary);cursor:pointer}',
-      '.dig-btn{padding:3px 10px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-weight:500;cursor:pointer;flex:none}',
-      '.dig-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-btn:disabled{opacity:.45;cursor:default}',
-      '.dig-btn-small{padding:2px 8px;font-size:11px}',
-      '.dig-btn-primary{margin-left:auto;background:var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary));border-color:transparent;color:var(--dsw-alias-label-primary-inverted,#fff)}',
-      '.dig-btn-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,var(--dsw-alias-brand-primary))}',
-      '.dig-btn-danger{background:var(--dsw-alias-state-error-primary);border-color:transparent;color:var(--dsw-alias-label-primary-inverted,#fff)}',
-      '.dig-detail{display:flex;flex-direction:column;min-height:0;flex:1;overflow:auto;padding:6px 8px;gap:6px}',
-      '.dig-detail-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
-      '.dig-detail-author,.dig-detail-date{color:var(--dsw-alias-label-tertiary)}',
-      '.dig-detail-subject{font-weight:600;white-space:pre-wrap}',
-      '.dig-detail-body{margin:0;white-space:pre-wrap;color:var(--dsw-alias-label-secondary);font:inherit}',
-      '.dig-detail-files-head{font-weight:600;margin-top:4px}',
-      '.dig-detail-files{display:flex;flex-direction:column}',
-      '.dig-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}',
-      '.dig-diff-pane{flex:none;max-height:55%;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--dsw-alias-border-l2)}',
-      '.dig-diff-head{display:flex;align-items:center;gap:8px;padding:3px 8px;color:var(--dsw-alias-label-tertiary);flex:none;min-width:0}',
-      '.dig-diff-path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}',
-      '.dig-diff{flex:1;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;font-weight:500;min-height:0}',
-      '.dig-diff-line{display:flex;gap:8px;padding:0 6px;white-space:pre}',
-      '.dig-diff-gutter{width:32px;flex:none;text-align:right;color:var(--dsw-alias-label-dimmed,var(--dsw-alias-label-tertiary));user-select:none}',
-      '.dig-diff-text{white-space:pre-wrap;word-break:break-word;flex:1;min-width:0}',
-      '.dig-diff-add{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 16%, transparent)}',
-      '.dig-diff-del{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 16%, transparent)}',
-      '.dig-diff-hunk{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent)}',
-      '.dig-diff-meta{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-changes-list:focus-visible,.dgp-tree:focus-visible,.dgp-history-scroll:focus-visible{outline:none}',
+      '.dgp-group{display:flex;flex-direction:column}',
+      '.dgp-group-head{display:flex;align-items:center;gap:8px;padding:2px 8px;height:17px;color:var(--dsw-alias-label-secondary);font-size:11px;font-weight:600}',
+      '.dgp-link{margin-left:auto;border:none;background:transparent;color:var(--dsw-alias-brand-primary);font:inherit;cursor:pointer;padding:0;flex:none}',
+      '.dgp-link:hover{text-decoration:underline}',
+      '.dgp-row-file{gap:6px;height:20px}',
+      '.dgp-file-status{flex:none;width:14px;text-align:center;font-weight:700;font-size:10px;color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-label-secondary))}',
+      '.dgp-file-status-A{color:var(--dsw-alias-state-success-primary)}',
+      '.dgp-file-status-D{color:var(--dsw-alias-state-error-primary)}',
+      '.dgp-file-status-R{color:var(--dsw-alias-brand-primary)}',
+      '.dgp-file-status-U{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-file-status-I{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-stat-add{color:var(--dsw-alias-state-success-primary);flex:none;font-variant-numeric:tabular-nums}',
+      '.dgp-stat-del{color:var(--dsw-alias-state-error-primary);flex:none;font-variant-numeric:tabular-nums}',
+      '.dgp-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:var(--dsw-radius-xs,4px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;flex:none;padding:0}',
+      '.dgp-row:hover .dgp-mini{opacity:1}',
+      '.dgp-mini:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.dgp-commit-box{flex:none;padding:6px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-commit-box-compact{flex-direction:row;align-items:center;gap:6px;padding:4px 6px;flex-wrap:wrap}',
+      '.dgp-textarea{width:100%;box-sizing:border-box;min-height:50px;resize:vertical;padding:5px 6px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;outline:none}',
+      '.dgp-textarea::placeholder{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-textarea:focus{border-color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary))}',
+      '.dgp-commit-actions{display:flex;align-items:center;gap:8px}',
+      '.dgp-check{display:inline-flex;align-items:center;gap:4px;color:var(--dsw-alias-label-secondary);cursor:pointer}',
+      '.dgp-btn{padding:3px 10px;border-radius:var(--dsw-radius-sm,8px);border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-weight:500;cursor:pointer;flex:none}',
+      '.dgp-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-btn:disabled{opacity:.45;cursor:default}',
+      '.dgp-btn-small{padding:2px 8px;font-size:11px}',
+      '.dgp-btn-primary{margin-left:auto;background:var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary));border-color:transparent;color:var(--dsw-alias-label-primary-inverted,#fff)}',
+      '.dgp-btn-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,var(--dsw-alias-brand-primary))}',
+      '.dgp-btn-danger{background:var(--dsw-alias-state-error-primary);border-color:transparent;color:var(--dsw-alias-label-primary-inverted,#fff)}',
+      '.dgp-detail{display:flex;flex-direction:column;min-height:0;flex:1;overflow:auto;padding:6px 8px;gap:6px}',
+      '.dgp-detail-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
+      '.dgp-detail-author,.dgp-detail-date{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-detail-subject{font-weight:600;white-space:pre-wrap}',
+      '.dgp-detail-body{margin:0;white-space:pre-wrap;color:var(--dsw-alias-label-secondary);font:inherit}',
+      '.dgp-detail-files-head{font-weight:600;margin-top:4px}',
+      '.dgp-detail-files{display:flex;flex-direction:column}',
+      '.dgp-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}',
+      '.dgp-diff-pane{flex:none;max-height:55%;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--dsw-alias-border-l2)}',
+      '.dgp-diff-head{display:flex;align-items:center;gap:8px;padding:3px 8px;color:var(--dsw-alias-label-tertiary);flex:none;min-width:0}',
+      '.dgp-diff-path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}',
+      '.dgp-diff{flex:1;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;font-weight:500;min-height:0}',
+      '.dgp-diff-line{display:flex;gap:8px;padding:0 6px;white-space:pre}',
+      '.dgp-diff-gutter{width:32px;flex:none;text-align:right;color:var(--dsw-alias-label-dimmed,var(--dsw-alias-label-tertiary));user-select:none}',
+      '.dgp-diff-text{white-space:pre-wrap;word-break:break-word;flex:1;min-width:0}',
+      '.dgp-diff-add{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 16%, transparent)}',
+      '.dgp-diff-del{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 16%, transparent)}',
+      '.dgp-diff-hunk{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent)}',
+      '.dgp-diff-meta{color:var(--dsw-alias-label-tertiary)}',
       /* Host-rendered diff (ui-primitives DiffBlock): the host box keeps the
          pane's scroll contract (everything renders, the pane scrolls), and the
          card's own 16px vertical margin is tightened to the panel rhythm. */
-      '.dig-diff-host{flex:1;overflow:auto;min-height:0}',
-      '.dig-diff-card{margin:4px 6px 8px;font-size:12px}',
+      '.dgp-diff-host{flex:1;overflow:auto;min-height:0}',
+      '.dgp-diff-card{margin:4px 6px 8px;font-size:12px}',
       /* File-type glyphs lead every change row (v0.14); a transparent-theme
          host still tints them through the component's own category colors. */
-      '.dig-file-icon{flex:none;opacity:.95}',
-      '.dig-overlay{position:absolute;inset:0;padding:8px;box-sizing:border-box;background:var(--dsw-alias-bg-mask-1,rgba(0,0,0,.42));-webkit-backdrop-filter:var(--dsw-mask-blur,none);backdrop-filter:var(--dsw-mask-blur,none);display:flex;align-items:center;justify-content:center;z-index:60}',
-      '.dig-dialog{box-sizing:border-box;min-width:min(240px,100%);max-width:min(420px,94%);max-height:100%;overflow:auto;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));border:0;border-radius:var(--dsw-radius-panel,28px);padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--dsw-elevation-prominent,0 12px 32px rgba(0,0,0,.35))}',
+      '.dgp-file-icon{flex:none;opacity:.95}',
+      '.dgp-overlay{position:absolute;inset:0;padding:8px;box-sizing:border-box;background:var(--dsw-alias-bg-mask-1,rgba(0,0,0,.42));-webkit-backdrop-filter:var(--dsw-mask-blur,none);backdrop-filter:var(--dsw-mask-blur,none);display:flex;align-items:center;justify-content:center;z-index:60}',
+      '.dgp-dialog{box-sizing:border-box;min-width:min(240px,100%);max-width:min(420px,94%);max-height:100%;overflow:auto;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));border:0;border-radius:var(--dsw-radius-panel,28px);padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--dsw-elevation-prominent,0 12px 32px rgba(0,0,0,.35))}',
       /* Git-output drawer (VS Code showOutput): panel-internal absolute bottom
          sheet (invariant 13). */
-      '.dig-gitlog{position:absolute;left:0;right:0;bottom:0;z-index:55;height:46%;min-height:132px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));border-radius:var(--dsw-radius-panel,28px) var(--dsw-radius-panel,28px) 0 0;box-shadow:var(--dsw-elevation-prominent,0 -8px 28px rgba(0,0,0,.3))}',
-      '.dig-gitlog-head{display:flex;align-items:center;gap:4px;padding:8px 14px 6px;flex:none}',
-      '.dig-gitlog-title{font-weight:600}',
-      '.dig-gitlog-empty{padding:10px 14px;color:var(--dsw-alias-label-tertiary)}',
-      '.dig-gitlog-body{flex:1;min-height:0;overflow:auto;padding:0 14px 10px;font-weight:400}',
-      '.dig-gitlog-row{padding:6px 0;border-top:1px solid var(--dsw-alias-border-l1,transparent)}',
-      '.dig-gitlog-row-bad .dig-gitlog-code{color:var(--dsw-alias-state-danger,#e5484d);font-weight:700}',
-      '.dig-gitlog-meta{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}',
-      '.dig-gitlog-code{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}',
-      '.dig-gitlog-ms{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}',
-      '.dig-gitlog-at{color:var(--dsw-alias-label-tertiary);font-size:11px}',
-      '.dig-gitlog-argv{font-weight:600;word-break:break-all}',
-      '.dig-gitlog-pre{margin:4px 0 0;padding:6px 8px;border-radius:var(--dsw-radius-md,12px);background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-2));overflow:auto;max-height:160px;white-space:pre-wrap;word-break:break-all;font-size:11px}',
-      '.dig-dialog-wide{min-width:min(360px,92%)}',
-      '.dig-dialog-title{font-weight:600}',
-      '.dig-dialog-text{color:var(--dsw-alias-label-secondary);white-space:pre-wrap}',
-      '.dig-dialog-actions{display:flex;justify-content:flex-end;gap:8px}',
-      '.dig-dialog-actions .dig-btn-primary{margin-left:0}',
+      '.dgp-gitlog{position:absolute;left:0;right:0;bottom:0;z-index:55;height:46%;min-height:132px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));border-radius:var(--dsw-radius-panel,28px) var(--dsw-radius-panel,28px) 0 0;box-shadow:var(--dsw-elevation-prominent,0 -8px 28px rgba(0,0,0,.3))}',
+      '.dgp-gitlog-head{display:flex;align-items:center;gap:4px;padding:8px 14px 6px;flex:none}',
+      '.dgp-gitlog-title{font-weight:600}',
+      '.dgp-gitlog-empty{padding:10px 14px;color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-gitlog-body{flex:1;min-height:0;overflow:auto;padding:0 14px 10px;font-weight:400}',
+      '.dgp-gitlog-row{padding:6px 0;border-top:1px solid var(--dsw-alias-border-l1,transparent)}',
+      '.dgp-gitlog-row-bad .dgp-gitlog-code{color:var(--dsw-alias-state-danger,#e5484d);font-weight:700}',
+      '.dgp-gitlog-meta{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}',
+      '.dgp-gitlog-code{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}',
+      '.dgp-gitlog-ms{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}',
+      '.dgp-gitlog-at{color:var(--dsw-alias-label-tertiary);font-size:11px}',
+      '.dgp-gitlog-argv{font-weight:600;word-break:break-all}',
+      '.dgp-gitlog-pre{margin:4px 0 0;padding:6px 8px;border-radius:var(--dsw-radius-md,12px);background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-2));overflow:auto;max-height:160px;white-space:pre-wrap;word-break:break-all;font-size:11px}',
+      '.dgp-dialog-wide{min-width:min(360px,92%)}',
+      '.dgp-dialog-title{font-weight:600}',
+      '.dgp-dialog-text{color:var(--dsw-alias-label-secondary);white-space:pre-wrap}',
+      '.dgp-dialog-actions{display:flex;justify-content:flex-end;gap:8px}',
+      '.dgp-dialog-actions .dgp-btn-primary{margin-left:0}',
       /* The wrapper carries the panel-relative anchor and the outside-click ref,
-         plus the ONLY percentage widths (its containing block is .dig-root, so
+         plus the ONLY percentage widths (its containing block is .dgp-root, so
          `max-width` resolves against the panel — on the card it would resolve
          against the shrink-to-fit wrapper and collapse the menu, cutting labels).
          The submenu is a second card offset to the parent card's edge, flipping
          left when the panel runs out of room (see ContextMenu.openSub). */
-      '.dig-menu-wrap{position:absolute;z-index:70;width:max-content;max-width:calc(100% - 8px)}',
-      '.dig-menu{box-sizing:border-box;min-width:200px;max-height:calc(100% - 8px);padding:4px;border:0;border-radius:var(--dsw-radius-md,12px);background:transparent;box-shadow:var(--dsw-elevation-prominent,0 10px 28px rgba(0,0,0,.35));--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);isolation:isolate;display:flex;flex-direction:column}',
-      '.dig-menu-sub{position:absolute;min-width:180px;max-width:300px;z-index:71}',
-      '.dig-menu::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1)));-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(14px) saturate(1.2));backdrop-filter:var(--dsw-menu-backdrop-filter,blur(14px) saturate(1.2));pointer-events:none}',
-      '.dig-menu-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column}',
-      '.dig-menu-item{display:flex;align-items:center;gap:8px;padding:4px 8px;border:none;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-weight:500;text-align:left;border-radius:var(--dsw-radius-sm,8px);cursor:pointer;white-space:nowrap;overflow:hidden}',
-      '.dig-menu-chevron{margin-left:auto;opacity:.6;flex:none;display:inline-flex}',
-      '.dig-menu-icon{display:inline-flex;flex:none}',
-      '.dig-menu-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}',
-      '.dig-menu-item:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-menu-item-active{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
-      '.dig-menu-danger,.dig-menu-danger .dig-menu-label{color:var(--dsw-alias-state-error-primary)}',
-      '.dig-menu-disabled{opacity:.38;cursor:default}',
-      '.dig-menu-sep{height:1px;margin:3px 6px;background:var(--dsw-alias-hairline,var(--dsw-alias-border-l1))}',
+      '.dgp-menu-wrap{position:absolute;z-index:70;width:max-content;max-width:calc(100% - 8px)}',
+      '.dgp-menu{box-sizing:border-box;min-width:200px;max-height:calc(100% - 8px);padding:4px;border:0;border-radius:var(--dsw-radius-md,12px);background:transparent;box-shadow:var(--dsw-elevation-prominent,0 10px 28px rgba(0,0,0,.35));--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);isolation:isolate;display:flex;flex-direction:column}',
+      '.dgp-menu-sub{position:absolute;min-width:180px;max-width:300px;z-index:71}',
+      '.dgp-menu::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1)));-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(14px) saturate(1.2));backdrop-filter:var(--dsw-menu-backdrop-filter,blur(14px) saturate(1.2));pointer-events:none}',
+      '.dgp-menu-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column}',
+      '.dgp-menu-item{display:flex;align-items:center;gap:8px;padding:4px 8px;border:none;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-weight:500;text-align:left;border-radius:var(--dsw-radius-sm,8px);cursor:pointer;white-space:nowrap;overflow:hidden}',
+      '.dgp-menu-chevron{margin-left:auto;opacity:.6;flex:none;display:inline-flex}',
+      '.dgp-menu-icon{display:inline-flex;flex:none}',
+      '.dgp-menu-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}',
+      '.dgp-menu-item:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-menu-item-active{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-brand-primary))}',
+      '.dgp-menu-danger,.dgp-menu-danger .dgp-menu-label{color:var(--dsw-alias-state-error-primary)}',
+      '.dgp-menu-disabled{opacity:.38;cursor:default}',
+      '.dgp-menu-sep{height:1px;margin:3px 6px;background:var(--dsw-alias-hairline,var(--dsw-alias-border-l1))}',
       /* ---- immersive conversation seat (issue #8 round 3) ---- */
       /* The seat itself carries `data-conversation-composer-overlay` (the
          host's own opt-in, what TrajectoryView rides): the host CSS flips the
@@ -13451,77 +14360,77 @@ window.__ModuleLoader__.load({
          `data-plan-review-key`): a blocking interaction riding the seat must
          stay reachable even though the plain input card is hidden, or a user
          sitting in the Git view could never approve anything. */
-      '[data-conversation-scroll]:has(.dig-conversation-seat[data-immersive="1"]) > [data-composer-seat]:not(:has([data-approval-key],[data-question-key],[data-plan-review-key])){display:none}',
+      '[data-conversation-scroll]:has(.dgp-conversation-seat[data-immersive="1"]) > [data-composer-seat]:not(:has([data-approval-key],[data-question-key],[data-plan-review-key])){display:none}',
       /* The transcript-width drag strips are FOLLOWING SIBLINGS of the shared
          scroller (children of the conversation body), full-height and
          z-index 8: over a full-bleed Git pane they glow and drag straight
          through it. Same sibling combinator lesson dsh-context recorded in
          its own issue #50 — a descendant combinator here matches nothing. */
-      '[data-conversation-scroll]:has(.dig-conversation-seat[data-immersive="1"]) ~ [data-width-handle]{display:none}',
+      '[data-conversation-scroll]:has(.dgp-conversation-seat[data-immersive="1"]) ~ [data-width-handle]{display:none}',
       /* ---- native preview tab (external diff preview) ---- */
       /* The body mounts straight into the right-sidebar pane: full height,
          internal scrolling in the body region, a one-line header for the
          subject/path. Same tokens as the rest of the panel — no hard-coded
          surfaces. */
-      '.dig-preview-root{position:relative;height:100%;display:flex;flex-direction:column;min-height:0;background:var(--dsw-alias-bg-base)}',
-      '.dig-preview-head{flex:none;padding:8px 12px;border-bottom:1px solid var(--dsw-alias-border-l2,var(--dsw-alias-border-l1));font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.dig-preview-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.dig-preview-body{flex:1;min-height:0;overflow:auto;padding:8px 12px;display:flex;flex-direction:column}',
-      '.dig-preview-body .dig-diff-host,.dig-preview-body .dig-diff{flex:1;min-height:0}',
-      '.dig-preview-actions{display:flex;align-items:center;gap:4px;flex:none}',
-      '.dig-preview-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}',
-      '.dig-preview-btn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.dgp-preview-root{position:relative;height:100%;display:flex;flex-direction:column;min-height:0;background:var(--dsw-alias-bg-base)}',
+      '.dgp-preview-head{flex:none;padding:8px 12px;border-bottom:1px solid var(--dsw-alias-border-l2,var(--dsw-alias-border-l1));font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dgp-preview-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dgp-preview-body{flex:1;min-height:0;overflow:auto;padding:8px 12px;display:flex;flex-direction:column}',
+      '.dgp-preview-body .dgp-diff-host,.dgp-preview-body .dgp-diff{flex:1;min-height:0}',
+      '.dgp-preview-actions{display:flex;align-items:center;gap:4px;flex:none}',
+      '.dgp-preview-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}',
+      '.dgp-preview-btn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       /* LineDiff (v0.14.3): the review view's anatomy on its own tokens —
          every rule below mirrors FileDiff.module.css / ReviewTab.module.css
-         line for line (class dig-lf- stands in for their css modules), so the
+         line for line (class dgp-lf- stands in for their css modules), so the
          official theme and reading habits carry over. */
-      '.dig-lf-root{--diff-empty-fill:color-mix(in srgb,var(--dsw-alias-interactive-bg-hover) 50%,transparent);display:flex;flex-direction:column;box-sizing:border-box;width:100%;min-height:0;color:var(--dsw-alias-label-primary)}',
-      '.dig-lf-header{display:flex;flex:0 0 auto;gap:6px;align-items:center;box-sizing:border-box;min-height:38px;padding:0 6px 0 8px;border-bottom:0.5px solid var(--dsw-alias-border-l3)}',
-      '.dig-lf-status{display:flex;gap:12px;align-items:center;margin:0;padding:16px;font-size:13px;color:var(--dsw-alias-label-secondary)}',
-      '.dig-lf-body{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:auto;padding:8px 0 16px;font:var(--dsw-font-markdown-code-block)}',
-      '.dig-lf-columns{display:grid;flex:1 1 auto;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:0}',
-      '.dig-lf-column,.dig-lf-body[data-review-view=unified]:not([data-review-wrap]){display:grid;grid-template-columns:minmax(max-content,100%);align-content:start}',
-      '.dig-lf-column{min-width:0;overflow-x:scroll;overscroll-behavior:none}',
-      '.dig-lf-column + .dig-lf-column{border-left:0.5px solid var(--dsw-alias-border-l3)}',
-      '.dig-lf-sideLine{display:grid;grid-template-columns:3.5em max-content;box-sizing:border-box;min-width:100%;width:max-content;min-height:22px;line-height:22px;white-space:pre}',
-      '.dig-lf-note{margin:0;padding:4px 16px 8px;font:var(--dsw-font-xs-13,var(--dsw-font-markdown-code-block));color:var(--dsw-alias-label-tertiary)}',
-      '.dig-lf-hunk{margin-bottom:8px}',
-      '.dig-lf-hunkHeader{padding:4px 16px;color:var(--dsw-alias-label-tertiary);white-space:pre}',
-      '.dig-lf-line{display:grid;grid-template-columns:3.5em 3.5em 1.2em minmax(0,1fr);box-sizing:border-box;min-height:22px;line-height:22px;white-space:pre}',
-      '.dig-lf-splitLine{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:22px;line-height:22px;white-space:pre}',
-      '.dig-lf-cell{display:grid;grid-template-columns:3.5em minmax(0,1fr);box-sizing:border-box;min-width:0}',
-      '.dig-lf-cell + .dig-lf-cell{border-left:0.5px solid var(--dsw-alias-border-l3)}',
-      '.dig-lf-number{padding-right:8px;color:var(--dsw-alias-label-tertiary);text-align:right;user-select:none}',
-      '.dig-lf-sign{text-align:center;user-select:none}',
-      '.dig-lf-text{padding-right:16px}',
-      '.dig-lf-body[data-review-wrap] .dig-lf-line,.dig-lf-body[data-review-wrap] .dig-lf-splitLine{white-space:pre-wrap}',
-      '.dig-lf-body[data-review-wrap] .dig-lf-text{overflow-wrap:anywhere}',
-      '.dig-lf-add{--diff-gutter-fill:var(--dsw-alias-file-diff-added-gutter);--diff-marker:var(--dsw-alias-file-diff-added-marker);background:var(--dsw-alias-file-diff-added-bg)}',
-      '.dig-lf-del{--diff-gutter-fill:var(--dsw-alias-file-diff-deleted-gutter);--diff-marker:var(--dsw-alias-file-diff-deleted-marker);background:var(--dsw-alias-file-diff-deleted-bg)}',
-      '.dig-lf-add .dig-lf-number,.dig-lf-del .dig-lf-number{background:var(--diff-gutter-fill);color:var(--diff-marker)}',
-      '.dig-lf-add .dig-lf-number:first-child,.dig-lf-del .dig-lf-number:first-child{box-shadow:inset 3px 0 0 var(--diff-marker)}',
-      '.dig-lf-add .dig-lf-sign,.dig-lf-del .dig-lf-sign{color:var(--diff-marker)}',
-      '.dig-lf-context .dig-lf-text{color:var(--dsw-alias-label-secondary)}',
-      '.dig-lf-empty{background:var(--diff-empty-fill)}',
+      '.dgp-lf-root{--diff-empty-fill:color-mix(in srgb,var(--dsw-alias-interactive-bg-hover) 50%,transparent);display:flex;flex-direction:column;box-sizing:border-box;width:100%;min-height:0;color:var(--dsw-alias-label-primary)}',
+      '.dgp-lf-header{display:flex;flex:0 0 auto;gap:6px;align-items:center;box-sizing:border-box;min-height:38px;padding:0 6px 0 8px;border-bottom:0.5px solid var(--dsw-alias-border-l3)}',
+      '.dgp-lf-status{display:flex;gap:12px;align-items:center;margin:0;padding:16px;font-size:13px;color:var(--dsw-alias-label-secondary)}',
+      '.dgp-lf-body{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:auto;padding:8px 0 16px;font:var(--dsw-font-markdown-code-block)}',
+      '.dgp-lf-columns{display:grid;flex:1 1 auto;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:0}',
+      '.dgp-lf-column,.dgp-lf-body[data-review-view=unified]:not([data-review-wrap]){display:grid;grid-template-columns:minmax(max-content,100%);align-content:start}',
+      '.dgp-lf-column{min-width:0;overflow-x:scroll;overscroll-behavior:none}',
+      '.dgp-lf-column + .dgp-lf-column{border-left:0.5px solid var(--dsw-alias-border-l3)}',
+      '.dgp-lf-sideLine{display:grid;grid-template-columns:3.5em max-content;box-sizing:border-box;min-width:100%;width:max-content;min-height:22px;line-height:22px;white-space:pre}',
+      '.dgp-lf-note{margin:0;padding:4px 16px 8px;font:var(--dsw-font-xs-13,var(--dsw-font-markdown-code-block));color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-lf-hunk{margin-bottom:8px}',
+      '.dgp-lf-hunkHeader{padding:4px 16px;color:var(--dsw-alias-label-tertiary);white-space:pre}',
+      '.dgp-lf-line{display:grid;grid-template-columns:3.5em 3.5em 1.2em minmax(0,1fr);box-sizing:border-box;min-height:22px;line-height:22px;white-space:pre}',
+      '.dgp-lf-splitLine{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:22px;line-height:22px;white-space:pre}',
+      '.dgp-lf-cell{display:grid;grid-template-columns:3.5em minmax(0,1fr);box-sizing:border-box;min-width:0}',
+      '.dgp-lf-cell + .dgp-lf-cell{border-left:0.5px solid var(--dsw-alias-border-l3)}',
+      '.dgp-lf-number{padding-right:8px;color:var(--dsw-alias-label-tertiary);text-align:right;user-select:none}',
+      '.dgp-lf-sign{text-align:center;user-select:none}',
+      '.dgp-lf-text{padding-right:16px}',
+      '.dgp-lf-body[data-review-wrap] .dgp-lf-line,.dgp-lf-body[data-review-wrap] .dgp-lf-splitLine{white-space:pre-wrap}',
+      '.dgp-lf-body[data-review-wrap] .dgp-lf-text{overflow-wrap:anywhere}',
+      '.dgp-lf-add{--diff-gutter-fill:var(--dsw-alias-file-diff-added-gutter);--diff-marker:var(--dsw-alias-file-diff-added-marker);background:var(--dsw-alias-file-diff-added-bg)}',
+      '.dgp-lf-del{--diff-gutter-fill:var(--dsw-alias-file-diff-deleted-gutter);--diff-marker:var(--dsw-alias-file-diff-deleted-marker);background:var(--dsw-alias-file-diff-deleted-bg)}',
+      '.dgp-lf-add .dgp-lf-number,.dgp-lf-del .dgp-lf-number{background:var(--diff-gutter-fill);color:var(--diff-marker)}',
+      '.dgp-lf-add .dgp-lf-number:first-child,.dgp-lf-del .dgp-lf-number:first-child{box-shadow:inset 3px 0 0 var(--diff-marker)}',
+      '.dgp-lf-add .dgp-lf-sign,.dgp-lf-del .dgp-lf-sign{color:var(--diff-marker)}',
+      '.dgp-lf-context .dgp-lf-text{color:var(--dsw-alias-label-secondary)}',
+      '.dgp-lf-empty{background:var(--diff-empty-fill)}',
       /* header pieces from ReviewTab.module.css */
-      '.dig-lf-selector{flex:0 1 auto;min-width:0}',
-      '.dig-lf-selectorStatic{flex:0 1 auto;min-width:0;overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap;font-weight:600}',
-      '.dig-lf-selectorFallback{max-width:60%;padding:2px 6px;border:none;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));color:inherit;font:inherit;font-size:12px}',
-      '.dig-lf-selectorButton{display:inline-flex;gap:4px;align-items:center;box-sizing:border-box;max-width:100%;height:28px;padding:0 6px 0 8px;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;font-size:12px;line-height:20px}',
-      '.dig-lf-selectorButton:hover,.dig-lf-selectorButton[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-lf-selectorButton svg{display:block;flex:none}',
-      '.dig-lf-item{display:flex;gap:12px;align-items:center;justify-content:space-between;min-width:0}',
-      '.dig-lf-itemPath{min-width:0;overflow:hidden;line-height:20px;text-overflow:ellipsis;white-space:nowrap}',
-      '.dig-lf-itemCounts,.dig-lf-counts{display:inline-flex;flex:none;gap:6px;align-items:center;font-family:var(--ds-font-family-code);font-size:12px;line-height:20px;color:var(--dsw-alias-label-tertiary)}',
-      '.dig-lf-counts{min-width:0;margin-right:auto}',
-      '.dig-lf-added{color:var(--dsw-alias-state-success-primary)}',
-      '.dig-lf-deleted{color:var(--dsw-alias-state-error-primary)}',
-      '.dig-lf-label{color:var(--dsw-alias-label-tertiary)}',
-      '.dig-lf-tools{display:inline-flex;flex:none;gap:2px;align-items:center;margin-left:auto}',
-      '.dig-lf-tool{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:6px;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}',
-      '.dig-lf-tool svg{width:15px;height:15px}',
-      '.dig-lf-tool:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}',
-      '.dig-lf-tool[aria-pressed=true] .dig-lf-compareIcon{transform:rotate(90deg)}',
+      '.dgp-lf-selector{flex:0 1 auto;min-width:0}',
+      '.dgp-lf-selectorStatic{flex:0 1 auto;min-width:0;overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap;font-weight:600}',
+      '.dgp-lf-selectorFallback{max-width:60%;padding:2px 6px;border:none;border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1));color:inherit;font:inherit;font-size:12px}',
+      '.dgp-lf-selectorButton{display:inline-flex;gap:4px;align-items:center;box-sizing:border-box;max-width:100%;height:28px;padding:0 6px 0 8px;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;font-size:12px;line-height:20px}',
+      '.dgp-lf-selectorButton:hover,.dgp-lf-selectorButton[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-lf-selectorButton svg{display:block;flex:none}',
+      '.dgp-lf-item{display:flex;gap:12px;align-items:center;justify-content:space-between;min-width:0}',
+      '.dgp-lf-itemPath{min-width:0;overflow:hidden;line-height:20px;text-overflow:ellipsis;white-space:nowrap}',
+      '.dgp-lf-itemCounts,.dgp-lf-counts{display:inline-flex;flex:none;gap:6px;align-items:center;font-family:var(--ds-font-family-code);font-size:12px;line-height:20px;color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-lf-counts{min-width:0;margin-right:auto}',
+      '.dgp-lf-added{color:var(--dsw-alias-state-success-primary)}',
+      '.dgp-lf-deleted{color:var(--dsw-alias-state-error-primary)}',
+      '.dgp-lf-label{color:var(--dsw-alias-label-tertiary)}',
+      '.dgp-lf-tools{display:inline-flex;flex:none;gap:2px;align-items:center;margin-left:auto}',
+      '.dgp-lf-tool{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:6px;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}',
+      '.dgp-lf-tool svg{width:15px;height:15px}',
+      '.dgp-lf-tool:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}',
+      '.dgp-lf-tool[aria-pressed=true] .dgp-lf-compareIcon{transform:rotate(90deg)}',
     ].concat(LANE_TRACE_RULES).join('\n')
 
     /* ============================== plugin ============================== */
@@ -13530,21 +14439,21 @@ window.__ModuleLoader__.load({
        package name is the natural value, and it is also the seat key the body
        registers under), the tab kind (unique across kinds — the shipped `git`
        kind is not ours to take), and the guide capsule that opens the tab. */
-    const NATIVE_ID = 'dsh-ide-git'
-    const NATIVE_KIND = 'ide-git'
+    const NATIVE_ID = 'dsh-git-panel'
+    const NATIVE_KIND = 'git-panel'
     const NATIVE_WORKSPACE_ITEMS = (state) => state.items
     /* The conversation.view slot id (issue #8). Order 30 sits the tab after
        Chat (0) and Trajectory (10), and after dsh-context's tab (20) when both
        are installed. */
-    const CONVERSATION_VIEW_ID = 'ide-git'
+    const CONVERSATION_VIEW_ID = 'git-panel'
     /* The native preview tab (external diff preview, 2026-10-08): a SECOND
        native right-sidebar type that exists only to show one diff. It carries
        no guide entry on purpose — nothing on the start page opens it; it opens
        itself when a diff verb fires with no better-sidebar to hand off to.
        Content follows the module-level store below, so every seat (the
        conversation tab, the native panel) feeds the same single preview. */
-    const NATIVE_PREVIEW_ID = 'dsh-ide-git-preview'
-    const NATIVE_PREVIEW_KIND = 'ide-git-preview'
+    const NATIVE_PREVIEW_ID = 'dsh-git-panel-preview'
+    const NATIVE_PREVIEW_KIND = 'git-panel-preview'
 
     /* The one diff seed the native preview tab shows. set() bumps a monotonous
        counter so a re-click of the SAME file still re-fetches; subscribers get
@@ -13786,7 +14695,7 @@ window.__ModuleLoader__.load({
         : {}
       return E('div', Object.assign({
         ref: seatRef,
-        className: 'dig-conversation-seat',
+        className: 'dgp-conversation-seat',
         style: immersive === true ? { height: '100%' } : (seatHeight === null ? undefined : { height: seatHeight + 'px' }),
       }, immersiveAttrs), E(LocaleLive, { ctx: ctx, scope: scope, t: props.t, visible: true }))
     }, (prev, next) => prev.sessionId === next.sessionId && prev.t === next.t && prev.ctx === next.ctx)
@@ -13898,19 +14807,19 @@ window.__ModuleLoader__.load({
           sidebarRight.openResource(address)
         } catch (error) { void error }
       }
-      return E('div', { className: 'dig-preview-root' },
-        E('div', { className: 'dig-preview-head' },
-          E('span', { className: 'dig-preview-title', title: title }, title === '' ? t('preview.title') : title),
-          seed === null ? null : E('div', { className: 'dig-preview-actions' },
-            E('button', { type: 'button', className: 'dig-preview-btn', 'aria-label': t('diff.copy'), title: t('diff.copy'), onClick: copyPatch },
+      return E('div', { className: 'dgp-preview-root' },
+        E('div', { className: 'dgp-preview-head' },
+          E('span', { className: 'dgp-preview-title', title: title }, title === '' ? t('preview.title') : title),
+          seed === null ? null : E('div', { className: 'dgp-preview-actions' },
+            E('button', { type: 'button', className: 'dgp-preview-btn', 'aria-label': t('diff.copy'), title: t('diff.copy'), onClick: copyPatch },
               E(Icon, { name: copied === true ? 'check' : 'copy', size: 13 })),
-            E('button', { type: 'button', className: 'dig-preview-btn', 'aria-label': t('toolbar.refresh'), title: t('toolbar.refresh'), onClick: () => { setRefreshTick((n) => n + 1) } },
+            E('button', { type: 'button', className: 'dgp-preview-btn', 'aria-label': t('toolbar.refresh'), title: t('toolbar.refresh'), onClick: () => { setRefreshTick((n) => n + 1) } },
               E(Icon, { name: 'refresh', size: 13 })))),
         seed === null
-          ? E('div', { className: 'dig-preview-body' }, E('div', { className: 'dig-empty' }, t('preview.hint')))
+          ? E('div', { className: 'dgp-preview-body' }, E('div', { className: 'dgp-empty' }, t('preview.hint')))
           : state.error !== null
-            ? E('div', { className: 'dig-preview-body' }, E('div', { className: 'dig-empty' }, state.error))
-            : E('div', { className: 'dig-preview-body' }, E(LineDiff, {
+            ? E('div', { className: 'dgp-preview-body' }, E('div', { className: 'dgp-empty' }, state.error))
+            : E('div', { className: 'dgp-preview-body' }, E(LineDiff, {
                 patch: state.patch,
                 loading: state.loading,
                 t: t,
@@ -13922,10 +14831,10 @@ window.__ModuleLoader__.load({
 
     function apply(ctx) {
       const style = document.createElement('style')
-      style.setAttribute('data-dsh-ide-git', '')
+      style.setAttribute('data-dsh-git-panel', '')
       style.textContent = CSS
       document.head.appendChild(style)
-      ctx.effect(() => () => { style.remove() }, 'dsh-ide-git: panel styles')
+      ctx.effect(() => () => { style.remove() }, 'dsh-git-panel: panel styles')
 
       const t = translatorOf(ctx)
 
@@ -13937,7 +14846,7 @@ window.__ModuleLoader__.load({
       if (localeService !== undefined && typeof localeService.register === 'function') {
         ctx.effect(
           () => localeService.register(LOCALE_NS, Object.assign({ zh: ZH, en: EN }, LOCALES)),
-          'dsh-ide-git: locale dictionaries',
+          'dsh-git-panel: locale dictionaries',
         )
       }
 
@@ -14004,7 +14913,7 @@ window.__ModuleLoader__.load({
               try { offBody() } catch (error) { void error }
               try { offType() } catch (error) { void error }
             }
-          }, 'dsh-ide-git: native right-sidebar seats')
+          }, 'dsh-git-panel: native right-sidebar seats')
         })
       }
 
@@ -14053,7 +14962,7 @@ window.__ModuleLoader__.load({
             hostedByBetterSidebar = false
             hostNatively()
           }
-        }, 'dsh-ide-git: Git tab')
+        }, 'dsh-git-panel: Git tab')
       })
 
       /* ctx.inject runs its callback straight away when the service is already
@@ -14095,7 +15004,7 @@ window.__ModuleLoader__.load({
                    priority): better one missed re-registration — the next
                    config change or reload retries — than a sync that throws
                    inside every rail-config notification. */
-                console.warn('[dsh-ide-git] conversation seat registration failed: ' + String(error && error.message ? error.message : error))
+                console.warn('[dsh-git-panel] conversation seat registration failed: ' + String(error && error.message ? error.message : error))
               }
             } else if (enabled !== true && offView !== null) {
               try { offView() } catch (error) { void error }
@@ -14111,7 +15020,7 @@ window.__ModuleLoader__.load({
               offView = null
             }
           }
-        }, 'dsh-ide-git: conversation view tab')
+        }, 'dsh-git-panel: conversation view tab')
       })
 
       /* ---- settings: the row Config is the rail's source of truth ---- */
@@ -14140,7 +15049,7 @@ window.__ModuleLoader__.load({
             if (typeof unsubscribe === 'function') unsubscribe()
             notifyRailConfig()
           }
-        }, 'dsh-ide-git: row config')
+        }, 'dsh-git-panel: row config')
       })
 
       /* The settings card, on the plugin detail page (plugins.bundle.config,
@@ -14159,10 +15068,10 @@ window.__ModuleLoader__.load({
           return () => {
             try { offBundle() } catch (error) { void error }
           }
-        }, 'dsh-ide-git: settings card')
+        }, 'dsh-git-panel: settings card')
       })
     }
 
-    return { name: 'dsh-ide-git', inject: [], apply }
+    return { name: 'dsh-git-panel', inject: [], apply }
   },
 })

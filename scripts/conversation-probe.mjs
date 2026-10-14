@@ -5,7 +5,7 @@
  * What it asserts, in order:
  *   1. after a session starts inside a workspace, the conversation tab ring
  *      carries a "Git" tab (the seat our client half registers);
- *   2. clicking it mounts the panel (.dig-root) with repository data — the
+ *   2. clicking it mounts the panel (.dgp-root) with repository data — the
  *      session's own cwd is the repository, resolved through the sessions
  *      service, not the sidebar props;
  *   3. the settings card's placement switch takes the tab down and puts it
@@ -23,7 +23,7 @@
  * The instance is expected to be clean-isolated (independent DSH_HOME) with a
  * workspace named 演示仓库 bound to a git repository (scripts/demo-repo.mjs
  * generates one); the probe passes the onboarding gate with a dummy key and
- * creates one session inside that workspace. Set DIG_PROBE_WORKSPACE to use a
+ * creates one session inside that workspace. Set DGP_PROBE_WORKSPACE to use a
  * different workspace title.
  *
  * Playwright is loaded from the DSH checkout (DSH_CHECKOUT overrides the path).
@@ -42,12 +42,11 @@ mkdirSync(outDir, { recursive: true })
 const logPath = join(outDir, 'probe.log')
 writeFileSync(logPath, '')
 const log = (message) => { console.log('[conv] ' + message); appendFileSync(logPath, message + '\n') }
-const workspaceTitle = process.env.DIG_PROBE_WORKSPACE === undefined ? '演示仓库' : process.env.DIG_PROBE_WORKSPACE
+const workspaceTitle = process.env.DGP_PROBE_WORKSPACE === undefined ? '演示仓库' : process.env.DGP_PROBE_WORKSPACE
 
 function loadPlaywright() {
-  const checkout = process.env.DSH_CHECKOUT === undefined || process.env.DSH_CHECKOUT === ''
-    ? '/Users/kanna/project/deepseek-harness'
-    : process.env.DSH_CHECKOUT
+  const checkout = process.env.DSH_CHECKOUT
+  if (!checkout) throw new Error('Set DSH_CHECKOUT to a DSH source checkout with Playwright installed')
   const store = join(checkout, 'node_modules', '.pnpm')
   const candidates = []
   if (existsSync(store)) {
@@ -70,7 +69,7 @@ const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, de
 
 const failures = []
 const pageErrors = []
-browser.on('page', (p) => { p.on('console', (m) => { if (m.type() === 'warning' && m.text().indexOf('dsh-ide-git') >= 0) log('[panel] ' + m.text().slice(0, 220)) }) })
+browser.on('page', (p) => { p.on('console', (m) => { if (m.type() === 'warning' && m.text().indexOf('dsh-git-panel') >= 0) log('[panel] ' + m.text().slice(0, 220)) }) })
 const check = (ok, message) => {
   if (ok === true) { log('ok   ' + message); return true }
   log('FAIL ' + message)
@@ -83,7 +82,7 @@ page.on('pageerror', (error) => {
 })
 page.on('console', (message) => {
   const text = message.text()
-  if (text.indexOf('[dsh-ide-git]') === 0) log('CONSOLE ' + text.slice(0, 200))
+  if (text.indexOf('[dsh-git-panel]') === 0) log('CONSOLE ' + text.slice(0, 200))
   else if (message.type() === 'error') log('CONSOLE-ERROR ' + text.slice(0, 200))
 })
 const settle = (ms) => page.waitForTimeout(ms === undefined ? 1200 : ms)
@@ -285,7 +284,7 @@ async function gitTabButton() {
 }
 
 const panelState = () => page.evaluate(() => {
-  const roots = [...document.querySelectorAll('.dig-root')]
+  const roots = [...document.querySelectorAll('.dgp-root')]
   const visible = roots.filter((el) => el.getBoundingClientRect().height > 40)
   const text = visible.length > 0 ? (visible[0].textContent || '') : ''
   return { roots: roots.length, visible: visible.length, text: text.replace(/\s+/g, ' ').slice(0, 160) }
@@ -307,7 +306,7 @@ try {
   await tab.asElement().click()
   await settle(5000)
   let state = await panelState()
-  check(state.visible === 1, 'the Git view mounts the panel (.dig-root visible)')
+  check(state.visible === 1, 'the Git view mounts the panel (.dgp-root visible)')
   check(/main|master|branch|分支/i.test(state.text) === true, 'the panel carries repository data from the session cwd: ' + state.text.slice(0, 80))
   await page.screenshot({ path: join(outDir, 'conversation-git-tab.png') })
 
@@ -316,7 +315,7 @@ try {
      and the composer seat is hidden while the Git view owns the ring (the CSS
      :not() chain keeps approvals reachable — nothing else may block that). */
   const immersiveOn = await page.evaluate(() => {
-    const seat = document.querySelector('.dig-conversation-seat[data-immersive="1"]')
+    const seat = document.querySelector('.dgp-conversation-seat[data-immersive="1"]')
     const composer = document.querySelector('[data-composer-seat]')
     const scroll = document.querySelector('[data-conversation-scroll]')
     return {
@@ -383,25 +382,25 @@ try {
       /* The newest demo commit is a MERGE — git show on a merge is empty by
          default, which hides the diff pane legitimately. Probe a regular
          commit instead (second row). */
-      const commitRow = page.locator('.dig-root:visible .dig-commit').nth(1)
+      const commitRow = page.locator('.dgp-root:visible .dgp-commit').nth(1)
       if (await commitRow.count() > 0) {
         await commitRow.click({ timeout: 6000 })
         await settle(4000)
         /* The user's exact path: click a changed FILE inside the detail — the
            diff is the tallest content that used to trigger the flip. */
-        const fileRow = page.locator('.dig-root:visible .dig-detail-files .dig-row-file').first()
+        const fileRow = page.locator('.dgp-root:visible .dgp-detail-files .dgp-row-file').first()
         if (await fileRow.count() > 0) {
           try { await fileRow.click({ timeout: 5000 }) } catch (error) { log('file click failed: ' + String(error && error.message ? error.message : error).slice(0, 120)) }
           await settle(3500)
         }
         const chrome = await page.evaluate(() => {
-          const root = [...document.querySelectorAll('.dig-root')].find((el) => el.getBoundingClientRect().height > 40)
+          const root = [...document.querySelectorAll('.dgp-root')].find((el) => el.getBoundingClientRect().height > 40)
           if (root === undefined) return null
-          const body = root.querySelector('.dig-body')
+          const body = root.querySelector('.dgp-body')
           const rect = root.getBoundingClientRect()
           const scroll = root.closest('[data-conversation-scroll]')
           return {
-            chrome: body === null ? 'none' : (body.className.match(/dig-body-(columns|stack|compact)/) || [])[1] || 'unknown',
+            chrome: body === null ? 'none' : (body.className.match(/dgp-body-(columns|stack|compact)/) || [])[1] || 'unknown',
             rootHeight: Math.round(rect.height),
             viewport: scroll === null ? window.innerHeight : Math.round(scroll.clientHeight),
           }
@@ -431,7 +430,7 @@ try {
            assert the two send items appear; clicking one must land a
            line-anchored reference in the session composer. */
         const sel = await page.evaluate(() => {
-          const root = [...document.querySelectorAll('.dig-root')].find((el) => el.getBoundingClientRect().height > 40)
+          const root = [...document.querySelectorAll('.dgp-root')].find((el) => el.getBoundingClientRect().height > 40)
           if (root === undefined) return { lines: 0 }
           const lines = [...root.querySelectorAll('[data-diff] div[class*="line"], [data-diff] > div')].filter((el) => {
             const r = el.getBoundingClientRect()
@@ -445,10 +444,10 @@ try {
                 dataDiff: document.querySelectorAll('[data-diff]').length,
                 dataDiffChildren: document.querySelectorAll('[data-diff] > div').length,
                 lineClass: document.querySelectorAll('[class*="line"]').length,
-                detailFiles: document.querySelectorAll('.dig-detail-files .dig-row-file').length,
-                patchPre: document.querySelectorAll('.dig-root pre, .dig-root [class*="diff"]').length,
-                diffPane: document.querySelectorAll('.dig-diff-pane').length,
-                selectedRow: document.querySelectorAll('.dig-row-selected').length,
+                detailFiles: document.querySelectorAll('.dgp-detail-files .dgp-row-file').length,
+                patchPre: document.querySelectorAll('.dgp-root pre, .dgp-root [class*="diff"]').length,
+                diffPane: document.querySelectorAll('.dgp-diff-pane').length,
+                selectedRow: document.querySelectorAll('.dgp-row-selected').length,
               },
             }
           }
@@ -460,7 +459,7 @@ try {
           selection.addRange(range)
           const target = lines[3]
           const r = target.getBoundingClientRect()
-          return { lines: lines.length, x: r.x + Math.min(40, r.width / 2), y: r.y + r.height / 2, file: (root.querySelector('.dig-detail-files .dig-row-selected, .dig-detail-files .dig-row-file') || {}).textContent || '' }
+          return { lines: lines.length, x: r.x + Math.min(40, r.width / 2), y: r.y + r.height / 2, file: (root.querySelector('.dgp-detail-files .dgp-row-selected, .dgp-detail-files .dgp-row-file') || {}).textContent || '' }
         })
         if (sel === null || sel.lines < 5) {
           log('selection diagnostics: ' + JSON.stringify(sel))
@@ -468,14 +467,14 @@ try {
           await page.mouse.click(sel.x, sel.y, { button: 'right' })
           await settle(1200)
           const items = await page.evaluate(() => {
-            const menus = [...document.querySelectorAll('.dig-root [class*="menu"], .dig-root .dig-menu')]
+            const menus = [...document.querySelectorAll('.dgp-root [class*="menu"], .dgp-root .dgp-menu')]
             const text = menus.map((m) => m.textContent || '').join('|')
             return { hasLines: text.indexOf('发送选中行') >= 0, hasSnippet: text.indexOf('发送选中片段') >= 0 }
           })
           check(items.hasLines === true || items.hasSnippet === true,
             'selecting diff lines offers the send-to-chat menu items (lines=' + String(items.hasLines) + ' snippet=' + String(items.hasSnippet) + ')')
           if (items.hasLines === true || items.hasSnippet === true) {
-            const sendItem = page.locator('.dig-root button, .dig-root [role="menuitem"]')
+            const sendItem = page.locator('.dgp-root button, .dgp-root [role="menuitem"]')
               .filter({ hasText: items.hasLines === true ? '发送选中行' : '发送选中片段' }).first()
             await sendItem.click({ timeout: 5000 })
             await settle(2500)
@@ -489,7 +488,7 @@ try {
           await page.evaluate(() => { const s = window.getSelection(); if (s !== null) s.removeAllRanges() })
         }
         /* Back to the history so the later steps start from a known surface. */
-        const back = page.locator('.dig-root:visible button', { hasText: '返回历史' }).first()
+        const back = page.locator('.dgp-root:visible button', { hasText: '返回历史' }).first()
         if (await back.count() > 0) { try { await back.click({ timeout: 4000 }) } catch (error) { void error } await settle(2000) }
       } else {
         log('commit rows not found — skipping the detail-flip check')
@@ -519,7 +518,7 @@ try {
      Simulated with route interception: direct → 403, /remote/… → the real
      route. The retry is sticky, so ONE fenced call is enough to prove it. */
   let remoteHits = 0
-  await page.route('**/dsh-ide-git/api/**', (route) => route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ ok: false, error: { code: 'forbidden', message: 'forbidden' } }) }))
+  await page.route('**/dsh-git-panel/api/**', (route) => route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ ok: false, error: { code: 'forbidden', message: 'forbidden' } }) }))
   await page.route('**/remote/**', (route) => {
     remoteHits += 1
     const stripped = route.request().url().replace('/remote/', '/')
@@ -569,7 +568,7 @@ try {
     if (ringTab !== null && ringTab.asElement() !== null) {
       try { await ringTab.asElement().click({ timeout: 4000 }) } catch (error) { void error }
       await settle(4000)
-      if (await page.locator('.dig-root:visible').count() > 0) return true
+      if (await page.locator('.dgp-root:visible').count() > 0) return true
     }
     const collapse = page.getByRole('button', { name: '关闭右侧边栏' }).first()
     if (await collapse.count() > 0) {
@@ -581,11 +580,11 @@ try {
       try { await expand.click({ timeout: 4000 }) } catch (error) { void error }
       await settle(3000)
     }
-    const card = page.locator('[data-sidebar-right-guide-entry="dsh-ide-git:panel"], [data-sidebar-right-guide-entry="ide-git"]').first()
+    const card = page.locator('[data-sidebar-right-guide-entry="dsh-git-panel:panel"], [data-sidebar-right-guide-entry="git-panel"]').first()
     if (await card.count() > 0) {
       try { await card.click({ timeout: 6000 }) } catch (error) { void error }
       await settle(4000)
-      if (await page.locator('.dig-root:visible').count() > 0) return true
+      if (await page.locator('.dgp-root:visible').count() > 0) return true
     } else {
       const diag = await page.evaluate(() => ({
         guide: [...document.querySelectorAll('[data-sidebar-right-guide-entry]')].map((el) => el.getAttribute('data-sidebar-right-guide-entry')),
@@ -608,7 +607,7 @@ try {
     for (const point of candidates) {
       await page.mouse.click(point.x, point.y)
       await settle(4000)
-      const open = await page.locator('.dig-root:visible').count()
+      const open = await page.locator('.dgp-root:visible').count()
       if (open > 0) return true
     }
     return false
@@ -628,14 +627,14 @@ try {
      dock-settings surface as the placement switch, same re-entry pattern. */
   const flipImmersive = async () => {
     if (await dockGit() !== true) { log('dock Git tab not found (immersive flip)'); return false }
-    const rail = page.locator('.dig-root:visible .dig-rail-settings').first()
+    const rail = page.locator('.dgp-root:visible .dgp-rail-settings').first()
     try { await rail.waitFor({ timeout: 10000 }) } catch (error) {
       log('rail settings button not found (immersive flip)')
       return false
     }
     await rail.click({ timeout: 6000 })
     await settle(3000)
-    const placement = page.locator('input#dig-placement-immersive').first()
+    const placement = page.locator('input#dgp-placement-immersive').first()
     if (await placement.count() === 0) { log('immersive switch not found on the settings surface'); return false }
     await placement.click({ timeout: 6000 })
     await settle(2500)
@@ -648,7 +647,7 @@ try {
       await tabIm.asElement().click()
       await settle(4000)
       const immersiveOff = await page.evaluate(() => {
-        const seat = document.querySelector('.dig-conversation-seat')
+        const seat = document.querySelector('.dgp-conversation-seat')
         const composer = document.querySelector('[data-composer-seat]')
         return {
           marker: seat === null ? 'no-seat' : (seat.hasAttribute('data-immersive') ? 'on' : 'off'),
@@ -669,7 +668,7 @@ try {
         await tabIm2.asElement().click()
         await settle(4000)
         const immersiveBack = await page.evaluate(() => {
-          const seat = document.querySelector('.dig-conversation-seat[data-immersive="1"]')
+          const seat = document.querySelector('.dgp-conversation-seat[data-immersive="1"]')
           const composer = document.querySelector('[data-composer-seat]')
           return {
             on: seat !== null && seat.hasAttribute('data-conversation-composer-overlay'),
@@ -696,14 +695,14 @@ try {
     if (await dockGit() !== true) { log('dock Git tab not found'); return false }
     /* The dock panel opens asynchronously (repo resolve + chrome render);
        wait for the button instead of sampling once. */
-    const rail = page.locator('.dig-root:visible .dig-rail-settings').first()
+    const rail = page.locator('.dgp-root:visible .dgp-rail-settings').first()
     try { await rail.waitFor({ timeout: 10000 }) } catch (error) {
       log('rail settings button not found (panel did not open in time)')
       return false
     }
     await rail.click({ timeout: 6000 })
     await settle(3000)
-    const placement = page.locator('input#dig-placement-conversationTab').first()
+    const placement = page.locator('input#dgp-placement-conversationTab').first()
     if (await placement.count() === 0) { log('placement switch not found on the settings surface'); return false }
     await placement.click({ timeout: 6000 })
     await settle(2500)

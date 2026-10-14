@@ -1,9 +1,9 @@
 /**
- * dsh-ide-git — host half (plain JavaScript, no build step).
+ * dsh-git-panel — host half (plain JavaScript, no build step).
  *
  * One HTTP surface backs the browser panel:
  *
- *   POST /dsh-ide-git/api/<method>   -> { ok: true, data } | { ok: false, error }
+ *   POST /dsh-git-panel/api/<method>   -> { ok: true, data } | { ok: false, error }
  *
  * Every method is a thin, argv-array wrapper around the local `git` binary
  * (never a shell string), executed with the working directory the client sent
@@ -21,11 +21,11 @@ import { createHash } from 'node:crypto'
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-export const name = 'dsh-ide-git'
+export const name = 'dsh-git-panel'
 export const inject = ['webServer']
 
 /* Row Config = the plugin's settings surface on dsh >= 0.1.7: the host persists
-   these values under the loader row id ('ide-git', see cordis.patch.yml) and the
+   these values under the loader row id ('git-panel', see cordis.patch.yml) and the
    browser reads them through ctx.configForms, so the settings card on the
    plugin's page and the action rail read ONE document. The rail's edit is one
    switch per action (`railRefresh` … `railPush`); a missing field means "default"
@@ -39,7 +39,7 @@ let Schema = null
 try {
   Schema = (await import('@deepseek-ai/schemastery')).default
 } catch (error) {
-  console.warn('[dsh-ide-git] @deepseek-ai/schemastery is not resolvable here; the row Config surface is absent'
+  console.warn('[dsh-git-panel] @deepseek-ai/schemastery is not resolvable here; the row Config surface is absent'
     + ' (the browser falls back to its localStorage rail config): ' + (error && error.message ? error.message : String(error)))
 }
 
@@ -77,12 +77,23 @@ function railConfigSchema(schema) {
      does not mark volatile ("Config field … is not volatile"), and the settings
      switch then rolls back silently. */
   shape.immersive = live(schema.boolean().default(true))
+  /* Repository-list behavior: the persistent row-summary cache keeps the list
+     from repainting a wall of '…' on a fresh app start (default ON), and the
+     scan pool width defaults to the measured knee — 4 won the 2/4/6/8 comparison
+     over 8 real repositories (the curve lives with the client reader). */
+  shape.rowPaintCache = live(schema.boolean().default(true))
+  shape.listScanSlots = live(schema.number().default(4))
+  /* Status auto-update strategy: the poll cadence (0 disables polling; the
+     settings card writes the 0/5000/12000/30000/60000 ladder) and the focus
+     wake-up. Defaults keep the pre-config behavior: 12 s, wake on. */
+  shape.autoRefreshMs = live(schema.number().default(12000))
+  shape.refreshOnFocus = live(schema.boolean().default(true))
   return schema.object(shape)
 }
 
 export const Config = Schema === null ? undefined : railConfigSchema(Schema)
 
-const ROUTE_PREFIX = '/dsh-ide-git/api'
+const ROUTE_PREFIX = '/dsh-git-panel/api'
 const MAX_OUTPUT_BYTES = 8 * 1024 * 1024
 
 /* Ring buffer of the most recent git runs — the panel's "Git output" view
@@ -122,7 +133,7 @@ function badRequest(message) {
 /* ============================== argv git ============================== */
 
 function gitBinary() {
-  const override = process.env.DSH_IDE_GIT_BIN
+  const override = process.env.DSH_GIT_PANEL_BIN
   return override !== undefined && override.trim() !== '' ? override.trim() : 'git'
 }
 
@@ -255,48 +266,42 @@ async function repoRootOf(cwd, payload) {
 }
 
 async function currentBranchOf(root) {
-  const name = (await git(root, ['rev-parse', '--abbrev-ref', 'HEAD'])).trim()
-  return name
+  // Symbolic HEAD names the branch even before its first commit exists.
+  const symbolic = await runGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])
+  if (symbolic.code === 0) return symbolic.stdout.trim()
+  // Detached HEAD still reports "HEAD"; other Git failures remain errors.
+  return (await git(root, ['rev-parse', '--abbrev-ref', 'HEAD'])).trim()
 }
 
-async function upstreamOf(root, branch) {
-  const result = await runGit(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', branch + '@{u}'])
-  if (result.code !== 0) return null
-  const name = result.stdout.trim()
-  return name === '' ? null : name
-}
-
-async function aheadBehindOf(root, upstream, branch) {
-  if (upstream === null) return { ahead: 0, behind: 0 }
-  const result = await runGit(root, ['rev-list', '--left-right', '--count', upstream + '...' + branch])
-  if (result.code !== 0) return { ahead: 0, behind: 0 }
-  const parts = result.stdout.trim().split(/\s+/)
-  const behind = Number.parseInt(parts[0], 10)
-  const ahead = Number.parseInt(parts[1], 10)
-  return { ahead: Number.isFinite(ahead) ? ahead : 0, behind: Number.isFinite(behind) ? behind : 0 }
-}
-
-/** Parse `git status --porcelain=v1 -z` (NUL separated, rename pairs follow). */
-function parsePorcelain(stdout) {
+/** Porcelain v2 includes HEAD/upstream/tracking in the same worktree scan.
+ * Split only the fixed prefix: paths can contain spaces, tabs and newlines. */
+function parseStatus(stdout) {
   const records = stdout.split('\u0000')
   const entries = []
+  const metadata = { branch: 'HEAD', detached: true, upstream: null, ahead: 0, behind: 0 }
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index]
-    if (record.length < 4) continue
-    const x = record[0]
-    const y = record[1]
-    const filePath = record.slice(3)
-    let origPath
-    if (x === 'R' || x === 'C' || y === 'R' || y === 'C') {
-      const next = records[index + 1]
-      if (next !== undefined && next !== '') {
-        origPath = next
-        index += 1
-      }
+    if (record.startsWith('# branch.head ')) {
+      const head = record.slice(14)
+      metadata.detached = head === '(detached)'
+      metadata.branch = metadata.detached ? 'HEAD' : head
+    } else if (record.startsWith('# branch.upstream ')) {
+      metadata.upstream = record.slice(18)
+    } else if (record.startsWith('# branch.ab ')) {
+      const match = /^# branch\.ab \+(\d+) -(\d+)$/.exec(record)
+      if (match !== null) { metadata.ahead = Number(match[1]); metadata.behind = Number(match[2]) }
+    } else if (record.startsWith('? ')) {
+      entries.push({ x: '?', y: '?', path: record.slice(2), origPath: undefined })
+    } else if (record[0] === '1' || record[0] === '2' || record[0] === 'u') {
+      const fieldCount = record[0] === '1' ? 8 : record[0] === '2' ? 9 : 10
+      let offset = 0
+      for (let field = 0; field < fieldCount; field += 1) offset = record.indexOf(' ', offset) + 1
+      const xy = record.slice(2, 4).replace(/\./g, ' ')
+      const origPath = record[0] === '2' ? records[++index] : undefined
+      entries.push({ x: xy[0], y: xy[1], path: record.slice(offset), origPath })
     }
-    entries.push({ x, y, path: filePath, origPath })
   }
-  return entries
+  return { entries, ...metadata }
 }
 
 function classify(entries) {
@@ -464,14 +469,27 @@ function withRepoLock(key, work) {
 
 const WRITE_METHODS = new Set([
   'stage', 'unstage', 'discard', 'commit', 'checkout', 'branchCreate', 'branchRename',
-  'branchDelete', 'merge', 'rebase', 'cherryPick', 'revert', 'reset', 'fetch', 'pull',
+  'branchDelete', 'merge', 'rebase', 'rebaseAbort', 'cherryPick', 'revert', 'reset', 'fetch', 'pull',
   'push', 'stashPush', 'stashApply', 'stashDrop', 'stashClear', 'tagCreate', 'tagDelete', 'tagDeleteRemote', 'pushTags', 'clone', 'remoteAdd', 'remoteRemove', 'branchDeleteRemote', 'undoApply',
 ])
 
-function lockKeyOf(payload) {
-  if (typeof payload.repoRoot === 'string' && payload.repoRoot !== '') return payload.repoRoot
-  if (typeof payload.cwd === 'string' && payload.cwd !== '') return payload.cwd
-  return 'global'
+async function lockKeyOf(payload, method) {
+  if (method === 'clone') {
+    // Clone has no cwd/repoRoot contract and the destination may not exist yet.
+    requireUrl(payload.url, 'url')
+    const dir = requireAbsolute(payload.dir, 'dir')
+    if (existsSync(dir)) return path.normalize(realpathSync.native(dir))
+    const parent = path.dirname(dir)
+    const physicalParent = existsSync(parent) ? realpathSync.native(parent) : parent
+    return path.join(physicalParent, path.basename(dir))
+  }
+  const cwd = cwdOf(payload)
+  const selected = payload.repoRoot === undefined ? cwd : requireAbsolute(payload.repoRoot, 'repoRoot')
+  // Resolve even explicit repoRoot values through Git: a subfolder, symlink or
+  // junction is an alias of its working tree, not a separate writer. Use the
+  // top-level tree (not --git-common-dir) so linked worktrees remain independent.
+  const root = await repoRootOf(selected)
+  return path.normalize(realpathSync.native(root))
 }
 
 /* Deleting is a real delete — but the host remembers how to bring it back for a
@@ -609,20 +627,9 @@ async function summary(payload) {
      numbers arrive through the `stats` method instead. The rows themselves
      are complete without them; nothing is truncated. */
   const deferStats = payload.stats === false
-  /* The branch chain (branch → upstream → ahead/behind) is sequential by
-     necessity; everything else is independent and runs concurrently, so a
-     large `status` scan no longer serialises behind five cheap calls
-     (issue #11: the sum of ~ten sequential commands became the max of two
-     chains). */
-  const [branchInfo, statusOut, unstagedStat, stagedStat, ignored, stashCount, worktrees, operation] = await Promise.all([
-    (async () => {
-      const branch = await currentBranchOf(root)
-      const detached = branch === 'HEAD'
-      const upstream = detached ? null : await upstreamOf(root, branch)
-      const tracking = upstream === null ? { ahead: 0, behind: 0 } : await aheadBehindOf(root, upstream, branch)
-      return { branch, detached, upstream, tracking }
-    })(),
-    git(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all']),
+  // Status supplies branch metadata too, eliminating three serial processes.
+  const [statusOut, unstagedStat, stagedStat, ignored, stashCount, worktrees, operation] = await Promise.all([
+    git(root, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all']),
     deferStats ? Promise.resolve(new Map()) : numstatOf(root, []),
     deferStats ? Promise.resolve(new Map()) : numstatOf(root, ['--cached']),
     payload.ignored === true ? ignoredEntriesOf(root) : { entries: [], truncated: false },
@@ -630,15 +637,16 @@ async function summary(payload) {
     worktreesOf(root),
     operationOf(root),
   ])
-  const groups = classify(parsePorcelain(statusOut))
+  const branchInfo = parseStatus(statusOut)
+  const groups = classify(branchInfo.entries)
   return {
     repoRoot: root,
     cwd,
     branch: branchInfo.branch,
     detached: branchInfo.detached,
     upstream: branchInfo.upstream,
-    ahead: branchInfo.tracking.ahead,
-    behind: branchInfo.tracking.behind,
+    ahead: branchInfo.ahead,
+    behind: branchInfo.behind,
     changes: {
       staged: decorate(groups.staged, stagedStat),
       unstaged: decorate(groups.unstaged, unstagedStat),
@@ -675,13 +683,16 @@ async function stats(payload) {
 async function branches(payload) {
   const cwd = cwdOf(payload)
   const root = await repoRootOf(cwd, payload)
-  const branch = await currentBranchOf(root)
-  const format = ['%(refname)', '%(refname:short)', '%(objectname)', '%(objectname:short)', '%(HEAD)', '%(upstream:short)', '%(committerdate:iso-strict)', '%(contents:subject)', '%(symref)'].join(FIELD_SEP)
-  const out = await git(root, ['for-each-ref', '--format=' + format + RECORD_SEP, 'refs/heads', 'refs/remotes', 'refs/tags'])
+  const format = ['%(refname)', '%(refname:short)', '%(objectname)', '%(objectname:short)', '%(HEAD)', '%(upstream:short)', '%(committerdate:iso-strict)', '%(contents:subject)', '%(symref)', '%(upstream:track)'].join(FIELD_SEP)
+  const [branch, out, worktrees, remotesOut] = await Promise.all([
+    currentBranchOf(root),
+    git(root, ['for-each-ref', '--format=' + format + RECORD_SEP, 'refs/heads', 'refs/remotes', 'refs/tags']),
+    worktreesOf(root),
+    runGit(root, ['remote']),
+  ])
   const local = []
   const remote = []
   const tags = []
-  const worktrees = await worktreesOf(root)
   const busy = new Map()
   for (const tree of worktrees) {
     if (tree.branch === null || tree.branch === '') continue
@@ -706,23 +717,16 @@ async function branches(payload) {
       date: parts[6],
       subject: parts[7],
       worktree: busy.get(parts[1]) === undefined ? null : busy.get(parts[1]),
-      ahead: 0,
-      behind: 0,
+      ahead: Number(/\bahead (\d+)/.exec(parts[9] || '')?.[1] || 0),
+      behind: Number(/\bbehind (\d+)/.exec(parts[9] || '')?.[1] || 0),
     }
     if (parts[0].startsWith('refs/heads/')) local.push(entry)
     else if (parts[0].startsWith('refs/remotes/')) remote.push(entry)
     else if (parts[0].startsWith('refs/tags/')) tags.push({ name: entry.name, hash: entry.hash, shortHash: entry.shortHash, date: entry.date, subject: entry.subject })
   }
-  for (const entry of local) {
-    if (entry.upstream === null) continue
-    const tracking = await aheadBehindOf(root, entry.upstream, entry.name)
-    entry.ahead = tracking.ahead
-    entry.behind = tracking.behind
-  }
   local.sort((a, b) => (a.head === b.head ? a.name.localeCompare(b.name) : a.head ? -1 : 1))
   remote.sort((a, b) => a.name.localeCompare(b.name))
   tags.sort((a, b) => a.name.localeCompare(b.name))
-  const remotesOut = await runGit(root, ['remote'])
   const remotes = remotesOut.code === 0 ? remotesOut.stdout.split('\n').map((line) => line.trim()).filter((line) => line !== '') : []
   return { repoRoot: root, branch, local, remote, tags, remotes }
 }
@@ -1295,7 +1299,7 @@ async function undoApply(payload) {
       await git(root, ['branch', item.name, item.hash])
     }
   } else if (entry.kind === 'stash-drop') {
-    await git(root, ['stash', 'store', '-m', 'dsh-ide-git: restored ' + entry.label, entry.hash])
+    await git(root, ['stash', 'store', '-m', 'dsh-git-panel: restored ' + entry.label, entry.hash])
   } else if (entry.kind === 'discard') {
     // Refuse to trample anything typed since the discard: every target must
     // still look exactly the way the discard left it.
@@ -1415,6 +1419,9 @@ function repoRow(root, submodulePath, kind) {
  */
 async function collectSubmoduleRepos(root) {
   const found = []
+  // Git cannot map registered submodule paths without .gitmodules. Most
+  // nested checkouts have none; skip the costly git-submodule shell startup.
+  if (!existsSync(path.join(root, '.gitmodules'))) return found
   const listing = await runGit(root, ['submodule', 'status', '--recursive'])
   if (listing.code !== 0) return found
   const candidates = []
@@ -1996,7 +2003,7 @@ async function handle(req, res) {
   try {
     const payload = await readJsonBody(req)
     const data = WRITE_METHODS.has(method)
-      ? await withRepoLock(lockKeyOf(payload), () => handler(payload))
+      ? await withRepoLock(await lockKeyOf(payload, method), () => handler(payload))
       : await handler(payload)
     sendJson(res, 200, { ok: true, data: data })
   } catch (error) {
@@ -2012,7 +2019,7 @@ async function handle(req, res) {
 export function apply(ctx) {
   ctx.effect(
     () => ctx.webServer.register({ kind: 'prefix', path: ROUTE_PREFIX, handler: handle }),
-    'dsh-ide-git: /dsh-ide-git/api git routes',
+    'dsh-git-panel: /dsh-git-panel/api git routes',
   )
   /* AI commit message (issue #6). `llm` and `sessions` are injected HERE and not
      in `export const inject`: a host without them must still load the whole
@@ -2025,6 +2032,6 @@ export function apply(ctx) {
     injected.effect(() => {
       commitServices = { llm: llm, sessions: sessions }
       return () => { commitServices = null }
-    }, 'dsh-ide-git: ai commit message')
+    }, 'dsh-git-panel: ai commit message')
   })
 }

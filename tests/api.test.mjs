@@ -1,5 +1,5 @@
 /**
- * dsh-ide-git — API integration test.
+ * dsh-git-panel — API integration test.
  *
  * Drives the real host-half route against a throwaway git repository created in
  * the OS temp dir: parses (porcelain -z / numstat -z / log record format),
@@ -8,10 +8,12 @@
  */
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync, existsSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync, existsSync, symlinkSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { execFileSync } from 'node:child_process'
+import childProcess, { execFileSync } from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
 import { EventEmitter } from 'node:events'
 import { apply, repoScanCache, REPOS_CACHE_TTL_MS } from '../src/index.js'
 
@@ -24,7 +26,7 @@ function call(method, payload, headers) {
   return new Promise((resolve, reject) => {
     const req = new EventEmitter()
     req.method = 'POST'
-    req.url = '/dsh-ide-git/api/' + method
+    req.url = '/dsh-git-panel/api/' + method
     req.headers = Object.assign({ host: '127.0.0.1:3080', 'content-type': 'application/json' }, headers)
     req.destroy = () => {}
     const res = {
@@ -47,9 +49,9 @@ before(() => {
   }
   apply(ctx)
   assert.equal(route.kind, 'prefix')
-  assert.equal(route.path, '/dsh-ide-git/api')
+  assert.equal(route.path, '/dsh-git-panel/api')
 
-  repo = mkdtempSync(join(tmpdir(), 'dsh-ide-git-api-'))
+  repo = mkdtempSync(join(tmpdir(), 'dsh-git-panel-api-'))
   git('init', '-q', '-b', 'main')
   // Fixture isolation: Windows Git for Windows ships a system-level
   // core.autocrlf=true that rewrites LF to CRLF on every checkout/restore,
@@ -99,6 +101,169 @@ test('summary classifies staged / unstaged / untracked with diffstats', async ()
   assert.equal(body.data.worktrees.length, 1)
 })
 
+test('summary supports an unborn symbolic branch with real changes and deferred stats', async () => {
+  const unborn = mkdtempSync(join(tmpdir(), 'dsh-git-panel-unborn-'))
+  const unbornGit = (...args) => execFileSync('git', args, { cwd: unborn, encoding: 'utf8' })
+  try {
+    unbornGit('init', '-q', '-b', 'topic/first-commit')
+    unbornGit('config', 'core.autocrlf', 'false')
+    unbornGit('config', 'core.eol', 'lf')
+    // No HEAD commit and no index yet is already a valid, clean repository.
+    const empty = await call('summary', { cwd: unborn })
+    assert.equal(empty.status, 200, JSON.stringify(empty.body))
+    assert.equal(empty.body.data.branch, 'topic/first-commit')
+    assert.equal(empty.body.data.detached, false)
+    assert.deepEqual(empty.body.data.changes.staged, [])
+    assert.deepEqual(empty.body.data.changes.untracked, [])
+
+    writeFileSync(join(unborn, 'staged.txt'), 'first\nsecond\n')
+    unbornGit('add', 'staged.txt')
+    writeFileSync(join(unborn, 'staged.txt'), 'first\nthird\nfourth\n')
+    writeFileSync(join(unborn, 'untracked.txt'), 'new\n')
+    const full = await call('summary', { cwd: unborn })
+    assert.equal(full.status, 200, JSON.stringify(full.body))
+    const data = full.body.data
+    assert.equal(data.branch, 'topic/first-commit')
+    assert.equal(data.detached, false)
+    assert.equal(data.upstream, null)
+    assert.equal(data.ahead, 0)
+    assert.equal(data.behind, 0)
+    assert.equal(data.stashCount, 0)
+    assert.equal(data.operation, null)
+    assert.equal(data.statsDeferred, false)
+    assert.deepEqual(data.changes.staged.map((file) => [file.path, file.index, file.worktree, file.additions, file.deletions]),
+      [['staged.txt', 'A', 'M', 2, 0]])
+    assert.deepEqual(data.changes.unstaged.map((file) => [file.path, file.additions, file.deletions]),
+      [['staged.txt', 2, 1]])
+    assert.deepEqual(data.changes.untracked.map((file) => file.path), ['untracked.txt'])
+    assert.deepEqual(data.changes.conflicted, [])
+    assert.equal(data.worktrees.length, 1)
+    assert.equal(data.worktrees[0].branch, 'topic/first-commit')
+    assert.equal(data.worktrees[0].detached, false)
+
+    const deferred = await call('summary', { cwd: repo, repoRoot: unborn, stats: false })
+    assert.equal(deferred.status, 200, JSON.stringify(deferred.body))
+    assert.equal(deferred.body.data.branch, data.branch)
+    assert.equal(deferred.body.data.statsDeferred, true)
+    assert.deepEqual(deferred.body.data.changes.staged.map((file) => [file.path, file.additions, file.deletions]),
+      [['staged.txt', 0, 0]])
+    assert.deepEqual(deferred.body.data.changes.unstaged.map((file) => file.path), ['staged.txt'])
+    assert.deepEqual(deferred.body.data.changes.untracked.map((file) => file.path), ['untracked.txt'])
+    const phaseTwo = await call('stats', { cwd: repo, repoRoot: unborn })
+    assert.equal(phaseTwo.status, 200, JSON.stringify(phaseTwo.body))
+    assert.deepEqual(phaseTwo.body.data.staged, [['staged.txt', 2, 0, false]])
+    assert.deepEqual(phaseTwo.body.data.unstaged, [['staged.txt', 2, 1, false]])
+  } finally {
+    await rm(unborn, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 })
+  }
+})
+
+test('summary preserves detached HEAD and worktree metadata', async () => {
+  const detachedRepo = mkdtempSync(join(tmpdir(), 'dsh-git-panel-detached-'))
+  try {
+    execFileSync('git', ['clone', '-q', repo, detachedRepo])
+    execFileSync('git', ['checkout', '-q', '--detach', 'v1'], { cwd: detachedRepo })
+    const hash = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: detachedRepo, encoding: 'utf8' }).trim()
+    const { status, body } = await call('summary', { cwd: detachedRepo })
+    assert.equal(status, 200, JSON.stringify(body))
+    assert.equal(body.data.branch, 'HEAD')
+    assert.equal(body.data.detached, true)
+    assert.equal(body.data.upstream, null)
+    assert.equal(body.data.ahead, 0)
+    assert.equal(body.data.behind, 0)
+    assert.equal(body.data.worktrees.length, 1)
+    assert.equal(body.data.worktrees[0].head, hash)
+    assert.equal(body.data.worktrees[0].branch, null)
+    assert.equal(body.data.worktrees[0].detached, true)
+  } finally {
+    rmSync(detachedRepo, { recursive: true, force: true })
+  }
+})
+
+test('summary preserves upstream and both ahead/behind counts on a diverged branch', async () => {
+  const trackedRepo = mkdtempSync(join(tmpdir(), 'dsh-git-panel-tracked-'))
+  const trackedGit = (...args) => execFileSync('git', args, { cwd: trackedRepo, encoding: 'utf8' })
+  try {
+    execFileSync('git', ['clone', '-q', repo, trackedRepo])
+    trackedGit('config', 'user.name', 'Check')
+    trackedGit('config', 'user.email', 'check@example.com')
+    trackedGit('checkout', '-q', '-B', 'main', 'v1')
+    trackedGit('branch', '--set-upstream-to=origin/main', 'main')
+    // The remote side is feature's extra commit, while main gets its own commit.
+    trackedGit('update-ref', 'refs/remotes/origin/main', trackedGit('rev-parse', 'origin/feature').trim())
+    trackedGit('commit', '-q', '--allow-empty', '-m', 'local divergence')
+    const { status, body } = await call('summary', { cwd: trackedRepo })
+    assert.equal(status, 200, JSON.stringify(body))
+    assert.equal(body.data.branch, 'main')
+    assert.equal(body.data.detached, false)
+    assert.equal(body.data.upstream, 'origin/main')
+    assert.equal(body.data.ahead, 1)
+    assert.equal(body.data.behind, 1)
+    assert.equal(body.data.worktrees[0].head, trackedGit('rev-parse', 'HEAD').trim())
+    assert.equal(body.data.worktrees[0].branch, 'main')
+    const branchResult = await call('branches', { cwd: trackedRepo })
+    assert.equal(branchResult.status, 200)
+    const main = branchResult.body.data.local.find((entry) => entry.name === 'main')
+    assert.equal(main.upstream, 'origin/main')
+    assert.equal(main.ahead, 1)
+    assert.equal(main.behind, 1)
+    trackedGit('update-ref', '-d', 'refs/remotes/origin/main')
+    const gone = await call('branches', { cwd: trackedRepo })
+    const goneMain = gone.body.data.local.find((entry) => entry.name === 'main')
+    assert.equal(goneMain.ahead, 0)
+    assert.equal(goneMain.behind, 0)
+  } finally {
+    rmSync(trackedRepo, { recursive: true, force: true })
+  }
+})
+
+test('summary preserves renamed paths with spaces and mixed staged/worktree changes', async () => {
+  const checkout = mkdtempSync(join(tmpdir(), 'dgp-status-rename-'))
+  const run = (...args) => execFileSync('git', args, { cwd: checkout, encoding: 'utf8' })
+  try {
+    execFileSync('git', ['clone', '-q', repo, checkout])
+    run('config', 'core.autocrlf', 'false')
+    run('mv', 'a.txt', 'renamed 文件 with spaces.txt')
+    writeFileSync(join(checkout, 'renamed 文件 with spaces.txt'), 'one\ntwo\nextra\n')
+    writeFileSync(join(checkout, 'untracked with spaces.txt'), 'new\n')
+    const { status, body } = await call('summary', { cwd: checkout })
+    assert.equal(status, 200, JSON.stringify(body))
+    const renamed = body.data.changes.staged.find((entry) => entry.path === 'renamed 文件 with spaces.txt')
+    assert.equal(renamed.origPath, 'a.txt')
+    assert.equal(renamed.index, 'R')
+    assert.equal(renamed.worktree, 'M')
+    assert.equal(body.data.changes.unstaged[0].path, renamed.path)
+    assert.equal(body.data.changes.untracked[0].path, 'untracked with spaces.txt')
+  } finally {
+    rmSync(checkout, { recursive: true, force: true })
+  }
+})
+
+test('summary preserves unmerged records and operation metadata', async () => {
+  const checkout = mkdtempSync(join(tmpdir(), 'dgp-status-conflict-'))
+  const run = (...args) => execFileSync('git', args, { cwd: checkout, encoding: 'utf8' })
+  try {
+    execFileSync('git', ['clone', '-q', repo, checkout])
+    run('config', 'user.name', 'Check')
+    run('config', 'user.email', 'check@example.com')
+    run('checkout', '-q', '-b', 'conflict-source')
+    writeFileSync(join(checkout, 'a.txt'), 'source\n')
+    run('commit', '-qam', 'source edit')
+    run('checkout', '-q', 'main')
+    writeFileSync(join(checkout, 'a.txt'), 'target\n')
+    run('commit', '-qam', 'target edit')
+    assert.throws(() => run('merge', 'conflict-source'))
+    const { status, body } = await call('summary', { cwd: checkout, stats: false })
+    assert.equal(status, 200, JSON.stringify(body))
+    assert.equal(body.data.changes.conflicted[0].path, 'a.txt')
+    assert.equal(body.data.changes.conflicted[0].index, 'U')
+    assert.equal(body.data.changes.conflicted[0].worktree, 'U')
+    assert.equal(body.data.operation, 'merge')
+  } finally {
+    rmSync(checkout, { recursive: true, force: true })
+  }
+})
+
 test('summary with stats: false defers the diffstats, stats delivers phase two (issue #11)', async () => {
   const deferred = await call('summary', { cwd: repo, stats: false })
   assert.equal(deferred.status, 200)
@@ -136,7 +301,7 @@ test('gitLogs records runs and clone validates its inputs (v0.15 more-menu)', as
   assert.equal(typeof last.at, 'string')
 
   // A local path is a valid clone source — fast, offline, and proves the happy path.
-  const target = join(tmpdir(), 'dig-clone-' + String(process.pid))
+  const target = join(tmpdir(), 'dgp-clone-' + String(process.pid))
   const cloned = await call('clone', { url: repo, dir: target })
   assert.equal(cloned.status, 200)
   assert.equal(cloned.body.ok, true)
@@ -502,7 +667,7 @@ test('ignored files show up only when the panel asks for them', async () => {
 test('only ANOTHER working tree marks a branch as occupied', async () => {
   // `git worktree list` includes the checkout the repository lives in, so a naive
   // read flags the CURRENT branch as occupied by its own working tree.
-  const linked = join(tmpdir(), 'dsh-ide-git-wt-' + Date.now())
+  const linked = join(tmpdir(), 'dsh-git-panel-wt-' + Date.now())
   git('worktree', 'add', '-q', '-b', 'wt-branch', linked)
   try {
     const data = await call('branches', { cwd: repo })
@@ -510,8 +675,17 @@ test('only ANOTHER working tree marks a branch as occupied', async () => {
     const other = data.body.data.local.find((entry) => entry.name === 'wt-branch')
     assert.ok(current !== undefined && other !== undefined, 'both branches are listed')
     assert.equal(current.worktree, null, 'the checkout the panel is looking at is not occupied')
-    assert.ok(other.worktree !== null && other.worktree.indexOf('dsh-ide-git-wt-') >= 0,
+    assert.ok(other.worktree !== null && other.worktree.indexOf('dsh-git-panel-wt-') >= 0,
       'the linked checkout marks its own branch: ' + JSON.stringify(other.worktree))
+    const summary = await call('summary', { cwd: repo, repoRoot: linked })
+    assert.equal(summary.status, 200, JSON.stringify(summary.body))
+    assert.equal(summary.body.data.branch, 'wt-branch')
+    assert.equal(summary.body.data.detached, false)
+    assert.equal(summary.body.data.worktrees.length, 2)
+    const linkedTree = summary.body.data.worktrees.find((tree) => tree.branch === 'wt-branch')
+    assert.ok(linkedTree !== undefined)
+    assert.equal(linkedTree.head, git('rev-parse', 'wt-branch').trim())
+    assert.equal(linkedTree.detached, false)
   } finally {
     git('worktree', 'remove', '--force', linked)
     git('branch', '-D', 'wt-branch')
@@ -542,7 +716,7 @@ async function withServices(llm, sessions, run) {
   const call = (method, payload) => new Promise((resolve, reject) => {
     const req = new EventEmitter()
     req.method = 'POST'
-    req.url = '/dsh-ide-git/api/' + method
+    req.url = '/dsh-git-panel/api/' + method
     req.headers = { host: '127.0.0.1:3080', 'content-type': 'application/json' }
     req.destroy = () => {}
     const res = {
@@ -623,8 +797,8 @@ test('commit-message: the user prompt is appended as data and capped', async () 
    not-a-repo, which made the AI message the one action that could not work in a
    multi-repo workspace while the rest of the panel did. */
 test('commit-message: the picked repository travels as repoRoot in a multi-repo workspace', async () => {
-  const workspace = mkdtempSync(join(tmpdir(), 'dsh-ide-git-ws-'))
-  const picked = mkdtempSync(join(tmpdir(), 'dsh-ide-git-picked-'))
+  const workspace = mkdtempSync(join(tmpdir(), 'dsh-git-panel-ws-'))
+  const picked = mkdtempSync(join(tmpdir(), 'dsh-git-panel-picked-'))
   try {
     execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: picked })
     execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: picked })
@@ -796,7 +970,7 @@ test('commit-message: a host without llm/sessions answers no-host-service instea
   const response = await new Promise((resolve, reject) => {
     const req = new EventEmitter()
     req.method = 'POST'
-    req.url = '/dsh-ide-git/api/commit-message'
+    req.url = '/dsh-git-panel/api/commit-message'
     req.headers = { host: '127.0.0.1:3080', 'content-type': 'application/json' }
     req.destroy = () => {}
     const res = { statusCode: 0, writeHead(status) { this.statusCode = status }, end(text) { try { resolve({ status: this.statusCode, body: JSON.parse(text) }) } catch (error) { reject(error) } } }
@@ -871,7 +1045,7 @@ test('commit-message: four simultaneous clicks spend the model exactly once', as
 })
 
 test('commit-message: a lock file is not a describable change, and says so', async () => {
-  const lockRepo = mkdtempSync(join(tmpdir(), 'dsh-ide-git-lock-'))
+  const lockRepo = mkdtempSync(join(tmpdir(), 'dsh-git-panel-lock-'))
   const lockGit = (...args) => execFileSync('git', args, { cwd: lockRepo, encoding: 'utf8' })
   lockGit('init', '-q', '-b', 'main')
   lockGit('config', 'user.email', 't@example.com')
@@ -934,4 +1108,199 @@ test('an expired entry forces a real scan, and the scan repopulates the cache', 
 
 test('REPOS_CACHE_TTL_MS stays the documented 15-second window', () => {
   assert.equal(REPOS_CACHE_TTL_MS, 15000)
+})
+
+/* Hold only the Git writers at the process boundary; root discovery still uses
+   real Git and real filesystem aliases. This tests observable API scheduling
+   without exposing queue internals, parsing source, or depending on delays. */
+function controlledGitWrites(t) {
+  const originalSpawn = childProcess.spawn
+  const writes = []
+  const reads = new Set()
+  let autoFinish = false
+  const mocked = t.mock.method(childProcess, 'spawn', (binary, argv, options) => {
+    if (argv[0] === 'add' || (argv[0] === 'rebase' && argv[1] === '--abort')) {
+      const child = new EventEmitter()
+      child.stdout = new EventEmitter()
+      child.stderr = new EventEmitter()
+      let finished = false
+      const finish = (code = 0, error = '') => {
+        if (finished) return
+        finished = true
+        queueMicrotask(() => {
+          if (error !== '') child.stderr.emit('data', Buffer.from(error))
+          child.emit('close', code, null)
+        })
+      }
+      child.kill = () => { finish(-1, 'fixture writer killed'); return true }
+      writes.push({ cwd: options.cwd, argv, finish })
+      if (autoFinish) finish()
+      return child
+    }
+    const child = originalSpawn(binary, argv, options)
+    let resolve
+    const done = new Promise((settle) => { resolve = settle })
+    reads.add(done)
+    const settled = () => { reads.delete(done); resolve() }
+    child.once('close', settled)
+    child.once('error', settled)
+    return child
+  })
+  syncBuiltinESMExports()
+  t.after(() => { mocked.mock.restore(); syncBuiltinESMExports() })
+  return {
+    writes,
+    async flushReads() {
+      // Let route/body/identity continuations run before checking pending reads.
+      // Drain to quiescence because a handler may start another Git read.
+      for (;;) {
+        await new Promise(setImmediate)
+        if (reads.size === 0) return
+        await Promise.all([...reads])
+      }
+    },
+    finishAll() {
+      autoFinish = true
+      for (const entry of writes) entry.finish()
+    },
+  }
+}
+
+test('writers through cwd subfolders and filesystem aliases share one queue, including after a failure', async (t) => {
+  const base = mkdtempSync(join(tmpdir(), 'dsh-git-panel-queue-alias-'))
+  const alias = join(base, 'alias')
+  symlinkSync(repo, alias, process.platform === 'win32' ? 'junction' : 'dir')
+  const control = controlledGitWrites(t)
+  const requests = []
+  try {
+    requests.push(call('stage', { cwd: repo, repoRoot: repo }))
+    await control.flushReads()
+    assert.equal(control.writes.length, 1, 'the first writer is held at Git')
+
+    const aliases = [
+      { cwd: join(repo, 'sub') },
+      { cwd: repo + '/sub/..' },
+      { cwd: alias },
+      { cwd: repo, repoRoot: join(alias, 'sub') },
+    ]
+    if (process.platform === 'win32') aliases.push({ cwd: repo.toUpperCase() })
+    for (const payload of aliases) requests.push(call('stage', payload))
+    await control.flushReads()
+    assert.equal(control.writes.length, 1, 'aliases cannot enter Git while that working tree is writing')
+
+    control.writes[0].finish(1, 'fixture write failed')
+    const first = await requests[0]
+    assert.equal(first.status, 409)
+    assert.equal(first.body.error.code, 'git-failed')
+    await control.flushReads()
+    assert.equal(control.writes.length, 2, 'exactly one queued writer starts after the failed writer')
+    control.finishAll()
+    const replies = await Promise.all(requests.slice(1))
+    for (const reply of replies) assert.equal(reply.status, 200, JSON.stringify(reply.body))
+    assert.equal(control.writes.length, aliases.length + 1)
+  } finally {
+    control.finishAll()
+    await Promise.allSettled(requests)
+    rmSync(base, { recursive: true, force: true })
+  }
+})
+
+test('distinct repositories and linked worktrees can write independently', async (t) => {
+  const base = mkdtempSync(join(tmpdir(), 'dsh-git-panel-queue-independent-'))
+  const other = join(base, 'other')
+  const linked = join(base, 'linked')
+  const branch = 'queue-worktree-' + String(process.pid)
+  execFileSync('git', ['init', '-q', '-b', 'main', other], { encoding: 'utf8' })
+  git('worktree', 'add', '-q', '-b', branch, linked)
+  const control = controlledGitWrites(t)
+  const requests = []
+  try {
+    requests.push(call('stage', { cwd: repo, repoRoot: repo }))
+    await control.flushReads()
+    assert.equal(control.writes.length, 1)
+    requests.push(call('stage', { cwd: repo, repoRoot: other }))
+    requests.push(call('stage', { cwd: repo, repoRoot: linked }))
+    await control.flushReads()
+    assert.equal(control.writes.length, 3, 'the other repository and linked tree start before the first writer finishes')
+
+    requests.push(call('stage', { cwd: repo, repoRoot: linked + '/.' }))
+    await control.flushReads()
+    assert.equal(control.writes.length, 3, 'an alias of the linked tree waits on that tree, not on the main checkout')
+    control.finishAll()
+    for (const reply of await Promise.all(requests)) assert.equal(reply.status, 200, JSON.stringify(reply.body))
+    assert.equal(control.writes.length, 4)
+  } finally {
+    control.finishAll()
+    await Promise.allSettled(requests)
+    git('worktree', 'remove', '--force', linked)
+    git('branch', '-D', branch)
+    rmSync(base, { recursive: true, force: true })
+  }
+})
+
+test('rebaseAbort waits for the repository writer and keeps later writers queued until abort finishes', async (t) => {
+  const control = controlledGitWrites(t)
+  const requests = []
+  try {
+    requests.push(call('stage', { cwd: repo, repoRoot: repo }))
+    await control.flushReads()
+    assert.equal(control.writes.length, 1)
+    requests.push(call('rebaseAbort', { cwd: repo, repoRoot: repo }))
+    await control.flushReads()
+    assert.equal(control.writes.length, 1, 'abort cannot overlap an existing writer')
+
+    control.writes[0].finish()
+    assert.equal((await requests[0]).status, 200)
+    await control.flushReads()
+    assert.equal(control.writes.length, 2)
+    assert.deepEqual(control.writes[1].argv, ['rebase', '--abort'])
+    requests.push(call('stage', { cwd: join(repo, 'sub') }))
+    await control.flushReads()
+    assert.equal(control.writes.length, 2, 'another writer waits while abort is running')
+
+    control.writes[1].finish(1, 'no rebase in progress')
+    assert.equal((await requests[1]).status, 409)
+    await control.flushReads()
+    assert.equal(control.writes.length, 3, 'an unsuccessful abort does not poison the write queue')
+    control.finishAll()
+    assert.equal((await requests[2]).status, 200)
+  } finally {
+    control.finishAll()
+    await Promise.allSettled(requests)
+  }
+})
+
+test('git binary override uses DSH_GIT_PANEL_BIN and ignores the inherited name', async (t) => {
+  const keys = ['DSH_GIT_PANEL_BIN', 'DSH_IDE_GIT_BIN']
+  const previous = keys.map((key) => process.env[key])
+  const binaries = []
+  const mocked = t.mock.method(childProcess, 'spawn', (binary, argv) => {
+    assert.deepEqual(argv, ['--version'])
+    binaries.push(binary)
+    const child = new EventEmitter()
+    child.stdout = new EventEmitter()
+    child.stderr = new EventEmitter()
+    child.kill = () => true
+    queueMicrotask(() => {
+      child.stdout.emit('data', Buffer.from('git version 2.45.1\n'))
+      child.emit('close', 0, null)
+    })
+    return child
+  })
+  syncBuiltinESMExports()
+  try {
+    process.env.DSH_GIT_PANEL_BIN = '  panel-git-fixture  '
+    process.env.DSH_IDE_GIT_BIN = 'inherited-git-fixture'
+    assert.equal((await call('version', {})).status, 200)
+    delete process.env.DSH_GIT_PANEL_BIN
+    assert.equal((await call('version', {})).status, 200)
+    assert.deepEqual(binaries, ['panel-git-fixture', 'git'])
+  } finally {
+    for (let i = 0; i < keys.length; i += 1) {
+      if (previous[i] === undefined) delete process.env[keys[i]]
+      else process.env[keys[i]] = previous[i]
+    }
+    mocked.mock.restore()
+    syncBuiltinESMExports()
+  }
 })

@@ -2,12 +2,12 @@
  * Captures the README screenshots from a RUNNING dsh web instance.
  *
  * The instance must have exactly two plugins installed (dsh-better-sidebar and
- * dsh-ide-git) and be bound to the throwaway demo repository, so nothing private
+ * dsh-git-panel) and be bound to the throwaway demo repository, so nothing private
  * — no real workspace, no wallpaper plugin, no other panel — can end up in the
  * images. Every shot is an element screenshot of the plugin's own root, so only
  * the panel is captured, never the surrounding shell.
  *
- *   node scripts/demo-repo.mjs /tmp/dsh-ide-git-demo
+ *   node scripts/demo-repo.mjs /tmp/dsh-git-panel-demo
  *   # a clean DSH_HOME with the two plugins, then:
  *   #   dsh web --port 3099 --no-open
  *   node scripts/screenshots.mjs "http://127.0.0.1:3099/?token=…"
@@ -31,9 +31,8 @@ const outDir = process.argv[3] === undefined || process.argv[3] === ''
 mkdirSync(outDir, { recursive: true })
 
 function loadPlaywright() {
-  const checkout = process.env.DSH_CHECKOUT === undefined || process.env.DSH_CHECKOUT === ''
-    ? '/Users/kanna/project/deepseek-harness'
-    : process.env.DSH_CHECKOUT
+  const checkout = process.env.DSH_CHECKOUT
+  if (!checkout) throw new Error('Set DSH_CHECKOUT to a DSH source checkout with Playwright installed')
   const store = join(checkout, 'node_modules', '.pnpm')
   const candidates = []
   if (existsSync(store)) {
@@ -74,7 +73,7 @@ async function clickText(text, options) {
 }
 
 async function shot(name, index) {
-  const roots = page.locator('.dig-root')
+  const roots = page.locator('.dgp-root')
   const count = await roots.count()
   if (count === 0) throw new Error('panel not present for ' + name)
   const target = index === undefined ? roots.first() : roots.nth(index)
@@ -127,22 +126,22 @@ try {
   await shot('1-bottom-workbench.png')
 
   // 2 — the commit context menu
-  await page.locator('.dig-commit').nth(2).click({ button: 'right' })
+  await page.locator('.dgp-commit').nth(2).click({ button: 'right' })
   await settle(1200)
   await shot('2-commit-menu.png')
   await page.keyboard.press('Escape')
   await settle(800)
 
   // 3 — deleting a branch really deletes it; the toast offers an undo
-  const branchRow = page.locator('.dig-tree .dig-row').filter({ hasText: 'feature/search-index' }).first()
+  const branchRow = page.locator('.dgp-tree .dgp-row').filter({ hasText: 'feature/search-index' }).first()
   await branchRow.click({ button: 'right' })
   await settle(1200)
   await page.getByText('删除', { exact: true }).first().click({ timeout: 6000 })
   await settle(1200)
-  await page.locator('.dig-dialog .dig-btn-danger').first().click({ timeout: 6000 })
+  await page.locator('.dgp-dialog .dgp-btn-danger').first().click({ timeout: 6000 })
   await settle(3000)
   await shot('3-branch-undo.png')
-  const undoButton = page.locator('.dig-toast-action').first()
+  const undoButton = page.locator('.dgp-toast-action').first()
   if (await undoButton.count() > 0) {
     await undoButton.click({ timeout: 6000 })
     await settle(3000)
@@ -150,16 +149,16 @@ try {
   }
 
   // 4 — the action rail settings (reorder + show/hide)
-  await page.locator('.dig-rail-settings').first().click({ timeout: 6000 })
+  await page.locator('.dgp-rail-settings').first().click({ timeout: 6000 })
   await settle(1500)
   await shot('4-rail-settings.png')
-  await page.locator('.dig-dialog .dig-btn-primary').first().click({ timeout: 6000 })
+  await page.locator('.dgp-dialog .dgp-btn-primary').first().click({ timeout: 6000 })
   await settle(1000)
 
   // 5 — commit details with the per-file diff
-  await page.locator('.dig-commit').nth(1).click({ timeout: 6000 })
+  await page.locator('.dgp-commit').nth(1).click({ timeout: 6000 })
   await settle(2500)
-  const detailFile = page.locator('.dig-detail-files .dig-row').first()
+  const detailFile = page.locator('.dgp-detail-files .dgp-row').first()
   if (await detailFile.count() > 0) {
     await detailFile.click({ timeout: 6000 })
     await settle(2500)

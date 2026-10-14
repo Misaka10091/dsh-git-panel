@@ -26,9 +26,8 @@ const outDir = process.argv[3] === undefined || process.argv[3] === '' ? '/tmp/l
 mkdirSync(outDir, { recursive: true })
 
 function loadPlaywright() {
-  const checkout = process.env.DSH_CHECKOUT === undefined || process.env.DSH_CHECKOUT === ''
-    ? '/Users/kanna/project/deepseek-harness'
-    : process.env.DSH_CHECKOUT
+  const checkout = process.env.DSH_CHECKOUT
+  if (!checkout) throw new Error('Set DSH_CHECKOUT to a DSH source checkout with Playwright installed')
   const store = join(checkout, 'node_modules', '.pnpm')
   const candidates = []
   if (existsSync(store)) {
@@ -103,7 +102,7 @@ async function openPanel() {
   await clickText('打开右侧边栏')
   await settle(3000)
   let card = null
-  for (const selector of ['[data-sidebar-right-guide-entry="dsh-ide-git:panel"]', '[data-sidebar-right-guide-entry="ide-git"]']) {
+  for (const selector of ['[data-sidebar-right-guide-entry="dsh-git-panel:panel"]', '[data-sidebar-right-guide-entry="git-panel"]']) {
     const found = page.locator(selector).first()
     if (await found.count() > 0) { card = found; break }
   }
@@ -113,7 +112,7 @@ async function openPanel() {
   await settle(6000)
 }
 
-const CHROMES = ['dig-body-columns', 'dig-body-stack', 'dig-body-compact']
+const CHROMES = ['dgp-body-columns', 'dgp-body-stack', 'dgp-body-compact']
 
 /**
  * In the three-pane chrome the changes pane is a fixed 290px column, and the header
@@ -123,9 +122,9 @@ const CHROMES = ['dig-body-columns', 'dig-body-stack', 'dig-body-compact']
  */
 async function headerOverflow() {
   return page.evaluate(() => {
-    const head = document.querySelector('.dig-changes-head')
+    const head = document.querySelector('.dgp-changes-head')
     if (head === null) return null
-    const icons = head.querySelectorAll('.dig-icon-btn')
+    const icons = head.querySelectorAll('.dgp-icon-btn')
     const last = icons.length === 0 ? null : icons[icons.length - 1]
     const headBox = head.getBoundingClientRect()
     const parentBox = head.parentElement === null ? headBox : head.parentElement.getBoundingClientRect()
@@ -144,13 +143,13 @@ async function headerOverflow() {
 async function chromeOf() {
   // Only the visible root counts: a folded workbench keeps its DOM node around,
   // so a page-wide class lookup mixes two chromes together.
-  const visible = page.locator('.dig-root:visible').first()
+  const visible = page.locator('.dgp-root:visible').first()
   const root = await visible.boundingBox()
   const found = []
   for (const name of CHROMES) {
-    if (await page.locator('.dig-root:visible .' + name).count() > 0) found.push(name.replace('dig-body-', ''))
+    if (await page.locator('.dgp-root:visible .' + name).count() > 0) found.push(name.replace('dgp-body-', ''))
   }
-  const rail = await page.locator('.dig-rail-vertical').count() > 0 ? 'vertical' : 'horizontal'
+  const rail = await page.locator('.dgp-rail-vertical').count() > 0 ? 'vertical' : 'horizontal'
   return {
     width: root === null ? 0 : Math.round(root.width),
     height: root === null ? 0 : Math.round(root.height),
@@ -173,7 +172,7 @@ try {
     await settle(900)
     const state = await chromeOf()
     rows.push({ requested: width, actual: state.width, state: state })
-    await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'w' + String(width).padStart(4, '0') + '.png') })
+    await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'w' + String(width).padStart(4, '0') + '.png') })
     const head = await headerOverflow()
     log('viewport ' + width + ' → panel ' + state.width + 'px, chrome=' + state.chrome + ', rail=' + state.rail
       + (head === null ? '' : ', changes-header ' + head.width + 'px bleed=' + head.bleed

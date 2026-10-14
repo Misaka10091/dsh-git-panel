@@ -29,9 +29,8 @@ const outDir = process.argv[3] === undefined || process.argv[3] === '' ? '/tmp/p
 mkdirSync(outDir, { recursive: true })
 
 function loadPlaywright() {
-  const checkout = process.env.DSH_CHECKOUT === undefined || process.env.DSH_CHECKOUT === ''
-    ? '/Users/kanna/project/deepseek-harness'
-    : process.env.DSH_CHECKOUT
+  const checkout = process.env.DSH_CHECKOUT
+  if (!checkout) throw new Error('Set DSH_CHECKOUT to a DSH source checkout with Playwright installed')
   const store = join(checkout, 'node_modules', '.pnpm')
   const candidates = []
   if (existsSync(store)) {
@@ -106,7 +105,7 @@ async function enterSession(label) {
      guide-entry button by TAB id and renders no description text, while DSH's own
      right sidebar keys it by the tab KIND and does render the description. */
   const guideCard = async () => {
-    for (const selector of ['[data-sidebar-right-guide-entry="dsh-ide-git:panel"]', '[data-sidebar-right-guide-entry="ide-git"]']) {
+    for (const selector of ['[data-sidebar-right-guide-entry="dsh-git-panel:panel"]', '[data-sidebar-right-guide-entry="git-panel"]']) {
       const found = page.locator(selector).first()
       if (await found.count() > 0) return found
     }
@@ -115,7 +114,7 @@ async function enterSession(label) {
   }
 
 async function ensurePanel() {
-  if (await page.locator('.dig-root:visible').count() > 0) return true
+  if (await page.locator('.dgp-root:visible').count() > 0) return true
   if (await guideCard() === null) {
     await clickText('稍后配置', 900)
     if (await guideCard() === null) await clickText('打开右侧边栏', 2500)
@@ -125,9 +124,9 @@ async function ensurePanel() {
   await card.click({ timeout: 8000 })
   await settle(5000)
   // The panel needs the branch/changes data before a gutter exists at all.
-  await page.locator('.dig-body').first().waitFor({ timeout: 8000 }).catch(() => {})
+  await page.locator('.dgp-body').first().waitFor({ timeout: 8000 }).catch(() => {})
   await settle(1500)
-  return await page.locator('.dig-root:visible').count() > 0
+  return await page.locator('.dgp-root:visible').count() > 0
 }
 
 /** Everything the assertions need, straight out of the rendered panel. */
@@ -139,12 +138,12 @@ async function readState() {
     }
     // A folded dock keeps its (zero-sized) root around, so take the laid-out one.
     let root = null
-    for (const candidate of document.querySelectorAll('.dig-root')) {
+    for (const candidate of document.querySelectorAll('.dgp-root')) {
       if (candidate.getBoundingClientRect().width > 0) { root = candidate; break }
     }
     if (root === null) return { missing: true }
-    const body = root.querySelector('.dig-body')
-    const match = body === null ? null : body.className.match(/dig-body-(columns|stack|compact)/)
+    const body = root.querySelector('.dgp-body')
+    const match = body === null ? null : body.className.match(/dgp-body-(columns|stack|compact)/)
     const chrome = match === null ? 'none' : match[1]
     const pick = (...selectors) => {
       for (const selector of selectors) {
@@ -153,17 +152,17 @@ async function readState() {
       }
       return null
     }
-    const tree = pick('.dig-pane-tree', '.dig-pane-tree-stack', '.dig-compact-tree')
+    const tree = pick('.dgp-pane-tree', '.dgp-pane-tree-stack', '.dgp-compact-tree')
     return {
       panel: box(root),
       body: body === null ? null : box(body),
       chrome: chrome,
       tree: tree,
-      changes: pick('.dig-pane-changes', '.dig-pane-changes-stack'),
-      main: pick('.dig-pane-main'),
-      diff: pick('.dig-diff-pane'),
-      gutters: [...root.querySelectorAll('.dig-gutter')].map((gutter) => ({
-        vertical: gutter.classList.contains('dig-gutter-v'),
+      changes: pick('.dgp-pane-changes', '.dgp-pane-changes-stack'),
+      main: pick('.dgp-pane-main'),
+      diff: pick('.dgp-diff-pane'),
+      gutters: [...root.querySelectorAll('.dgp-gutter')].map((gutter) => ({
+        vertical: gutter.classList.contains('dgp-gutter-v'),
         now: Number(gutter.getAttribute('aria-valuenow')),
         min: Number(gutter.getAttribute('aria-valuemin')),
         max: Number(gutter.getAttribute('aria-valuemax')),
@@ -174,14 +173,14 @@ async function readState() {
       // A divider that occupies no space while still announcing a window of
       // 0..0 is a dead control and must not exist at all (v0.8.0 shipped one in
       // the columns chrome, focusable, with aria-valuenow === aria-valuemax === 0).
-      deadGutters: [...root.querySelectorAll('.dig-gutter')].filter((gutter) => {
+      deadGutters: [...root.querySelectorAll('.dgp-gutter')].filter((gutter) => {
         const rect = gutter.getBoundingClientRect()
         const now = Number(gutter.getAttribute('aria-valuenow'))
         const max = Number(gutter.getAttribute('aria-valuemax'))
         return rect.width === 0 || rect.height === 0 || (now === 0 && max === 0)
       }).length,
       paneStyles: [...root.querySelectorAll('[data-pane]')].map((node) => node.getAttribute('data-pane') + ':' + String(node.getAttribute('style'))),
-      stored: window.localStorage.getItem('dsh-ide-git.panes.v1'),
+      stored: window.localStorage.getItem('dsh-git-panel.panes.v1'),
     }
   })
 }
@@ -198,10 +197,10 @@ const stored = (state) => {
 
 /** One pointer drag on a divider; returns the state after the gesture. */
 async function dragGutter(index, delta) {
-  const handle = page.locator('.dig-root:visible .dig-gutter').nth(index)
+  const handle = page.locator('.dgp-root:visible .dgp-gutter').nth(index)
   const rect = await handle.boundingBox()
   if (rect === null) throw new Error('gutter ' + index + ' has no box')
-  const vertical = await handle.evaluate((node) => node.classList.contains('dig-gutter-v'))
+  const vertical = await handle.evaluate((node) => node.classList.contains('dgp-gutter-v'))
   const x = rect.x + rect.width / 2
   const y = rect.y + rect.height / 2
   await page.mouse.move(x, y)
@@ -228,15 +227,15 @@ function travel(gutter, current) {
 }
 
 /** Is an overlay really inside the panel? Invariant 13: every menu, dialog and
- *  toast is positioned inside `.dig-root`, and that includes being no WIDER than
+ *  toast is positioned inside `.dgp-root`, and that includes being no WIDER than
  *  it — a fixed min-width used to beat max-width and push the menu past the
  *  panel's right edge once the panel was dragged narrow. */
 async function overlayFit(selector) {
   return page.evaluate((sel) => {
     const element = document.querySelector(sel)
     if (element === null) return { found: false }
-    const root = element.closest('.dig-root')
-    if (root === null) return { found: true, within: false, why: 'no .dig-root ancestor' }
+    const root = element.closest('.dgp-root')
+    if (root === null) return { found: true, within: false, why: 'no .dgp-root ancestor' }
     const box = element.getBoundingClientRect()
     const panel = root.getBoundingClientRect()
     const rect = [Math.round(box.left), Math.round(box.top), Math.round(box.width), Math.round(box.height)]
@@ -253,7 +252,7 @@ async function overlayFit(selector) {
 const rows = []
 
 /** Invariant 13 under a narrow panel: the overlays are positioned inside
- *  `.dig-root` AND are no wider than it. A fixed min-width used to beat
+ *  `.dgp-root` AND are no wider than it. A fixed min-width used to beat
  *  max-width, so once the panel was dragged narrow the context menu came out
  *  wider than the panel and hung past its right edge. */
 async function checkNarrowOverlays(label, width) {
@@ -263,19 +262,19 @@ async function checkNarrowOverlays(label, width) {
   log(label + ': panel ' + state.panel.w + 'x' + state.panel.h + ' chrome=' + state.chrome)
   check(state.chrome === 'compact' && state.panel.w < 400,
     label + ': the panel is narrow enough for the compact chrome (' + state.panel.w + 'px)')
-  const rootClass = await page.locator('.dig-root:visible').first().getAttribute('class')
-  check(String(rootClass).indexOf('dig-root-narrow') >= 0,
+  const rootClass = await page.locator('.dgp-root:visible').first().getAttribute('class')
+  check(String(rootClass).indexOf('dgp-root-narrow') >= 0,
     label + ': the panel marks itself narrow so overlay text wraps instead of clipping')
 
-  const row = page.locator('.dig-root:visible .dig-row').first()
+  const row = page.locator('.dgp-root:visible .dgp-row').first()
   if (await row.count() > 0) {
     await row.click({ button: 'right' })
     await settle(800)
-    const menu = await overlayFit('.dig-menu')
+    const menu = await overlayFit('.dgp-menu')
     check(menu.found === true && menu.within === true,
       label + ': the context menu fits inside the panel (menu ' + JSON.stringify(menu.rect) + ' vs panel ' + JSON.stringify(menu.panel) + ')')
     rows.push({ step: label + ' menu', bucket: bucketOf(state), tree: state.tree === null ? 'none' : state.tree.h + 'px', stored: menu.within === true ? 'within root' : 'OVERFLOW' })
-    await page.locator('.dig-root').first().screenshot({ path: join(outDir, label.replace(/[^a-z0-9]+/gi, '-') + '-menu.png') })
+    await page.locator('.dgp-root').first().screenshot({ path: join(outDir, label.replace(/[^a-z0-9]+/gi, '-') + '-menu.png') })
     await page.keyboard.press('Escape')
     await settle(500)
   } else {
@@ -283,11 +282,11 @@ async function checkNarrowOverlays(label, width) {
   }
 
   await clickText('新建分支', 1200)
-  const dialog = await overlayFit('.dig-dialog')
+  const dialog = await overlayFit('.dgp-dialog')
   check(dialog.found === true && dialog.within === true,
     label + ': the dialog fits inside the panel (dialog ' + JSON.stringify(dialog.rect) + ' vs panel ' + JSON.stringify(dialog.panel) + ')')
   rows.push({ step: label + ' dialog', bucket: bucketOf(state), tree: state.tree === null ? 'none' : state.tree.h + 'px', stored: dialog.within === true ? 'within root' : 'OVERFLOW' })
-  if (dialog.found === true) await page.locator('.dig-root').first().screenshot({ path: join(outDir, label.replace(/[^a-z0-9]+/gi, '-') + '-dialog.png') })
+  if (dialog.found === true) await page.locator('.dgp-root').first().screenshot({ path: join(outDir, label.replace(/[^a-z0-9]+/gi, '-') + '-dialog.png') })
   await page.keyboard.press('Escape')
   await settle(400)
 }
@@ -306,7 +305,7 @@ try {
   check(tall0.gutters.length >= 2, 'the tall chrome renders a divider per pane seam (got ' + tall0.gutters.length + ')')
   check(tall0.stored === null, 'a fresh profile starts with no stored pane sizes')
   const tallBucket = bucketOf(tall0)
-  await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'tall-default.png') })
+  await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'tall-default.png') })
   rows.push({ step: 'tall default', bucket: tallBucket, tree: tall0.tree.h + 'px', stored: 'none' })
 
   const first = tall0.gutters[0]
@@ -327,12 +326,12 @@ try {
   const tallRatio = afterDrag.panes[tallBucket].tree
   check(Math.abs(tallRatio - tall1.tree.h / tall1.body.h) < 0.02,
     'the stored ratio reproduces the rendered height (' + tallRatio.toFixed(3) + ')')
-  await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'tall-dragged.png') })
+  await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'tall-dragged.png') })
   rows.push({ step: 'tall dragged', bucket: tallBucket, tree: tall1.tree.h + 'px', stored: tallRatio.toFixed(3) })
 
   await page.reload({ waitUntil: 'domcontentloaded' })
   await settle(8000)
-  await page.locator('.dig-root:visible').first().waitFor({ timeout: 15000 }).catch(() => {})
+  await page.locator('.dgp-root:visible').first().waitFor({ timeout: 15000 }).catch(() => {})
   await ensurePanel()
   await settle(1200)
   const tall2 = await readState()
@@ -366,7 +365,7 @@ try {
   check(wideStored.panes[tallBucket] !== undefined && wideStored.panes[wideBucket] === undefined,
     'the wide bucket starts empty while the tall one stays stored')
   check(wideStored.panes[tallBucket].tree === tallRatio, 'and its stored ratio is untouched')
-  await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'wide-default.png') })
+  await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'wide-default.png') })
   rows.push({ step: 'wide default', bucket: wideBucket, tree: wide0.tree.w + 'px', stored: 'none (own bucket)' })
 
   const wideFirst = wide0.gutters[0]
@@ -390,7 +389,7 @@ try {
   const wideStore = stored(wide1)
   check(wideStore.panes[wideBucket] !== undefined, 'the wide drag was stored under ' + wideBucket)
   check(wideStore.panes[tallBucket].tree === tallRatio, 'the tall bucket was not touched by the wide drag')
-  await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'wide-dragged.png') })
+  await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'wide-dragged.png') })
   rows.push({ step: 'wide dragged', bucket: wideBucket, tree: wide1.tree.w + 'px', stored: wideStore.panes[wideBucket].tree.toFixed(3) })
 
   // The other seam of the same chrome: the changes column, dragged the other way.
@@ -421,7 +420,7 @@ try {
 
   /* ---------- 4. reset and keyboard ---------- */
 
-  await page.locator('.dig-root:visible .dig-gutter').first().dblclick({ timeout: 6000 })
+  await page.locator('.dgp-root:visible .dgp-gutter').first().dblclick({ timeout: 6000 })
   await settle(800)
   const reset = await readState()
   const cssDefault = Math.round(tall4.body.h * 0.36)
@@ -432,7 +431,7 @@ try {
     'and the override is dropped from storage')
   rows.push({ step: 'after double-click', bucket: tallBucket, tree: reset.tree.h + 'px', stored: 'reset' })
 
-  const handle = page.locator('.dig-root:visible .dig-gutter').first()
+  const handle = page.locator('.dgp-root:visible .dgp-gutter').first()
   await handle.focus()
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')
@@ -443,13 +442,13 @@ try {
   check(stored(nudged).panes[tallBucket] !== undefined, 'a keyboard nudge is persisted immediately')
   rows.push({ step: 'after two ArrowDown', bucket: tallBucket, tree: nudged.tree.h + 'px', stored: 'kept' })
 
-  await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'tall-nudged.png') })
+  await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'tall-nudged.png') })
 
   /* ---------- 4b. the history↔diff divider really resizes the diff ---------- */
 
   await page.setViewportSize({ width: 1500, height: 1000 })
   await settle(1800)
-  const row = page.locator('.dig-root:visible .dig-changes-list .dig-row-file').first()
+  const row = page.locator('.dgp-root:visible .dgp-changes-list .dgp-row-file').first()
   check(await row.count() > 0, 'the changes pane offers a file to diff')
   if (await row.count() > 0) {
     await row.click({ timeout: 8000 })

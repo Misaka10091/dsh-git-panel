@@ -1,27 +1,28 @@
 /**
  * Local SSR self-check for the client half (not part of CI).
  *
- * Renders the registered tab once with react-dom/server against the react
- * copied in the local web profile: this is what catches "renders and throws"
+ * Renders the registered seats with react-dom/server resolved from a local
+ * DSH profile (DSH_HOME / DSH_PROFILE): this catches "renders and throws"
  * regressions (a t() call that is not a function, a TDZ reference in a hooks
  * dependency array, a missing dictionary key) without opening a browser.
  *
  *   node scripts/ssr-check.mjs
  *
- * Skips silently when no web profile is present, so it never blocks anything.
+ * Reports an explicit skip when the selected profile or React is unavailable.
  */
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const dshHome = process.env.DSH_HOME === undefined || process.env.DSH_HOME === '' ? join(homedir(), '.dsh') : process.env.DSH_HOME
-const profileManifest = join(dshHome, 'profiles', 'web', 'package.json')
+const profile = process.env.DSH_PROFILE || 'web'
+const profileManifest = join(dshHome, 'profiles', profile, 'package.json')
 
 if (!existsSync(profileManifest)) {
-  console.log('ssr-check: skipped (no web profile at ' + profileManifest + ')')
+  console.log('ssr-check: skipped (no ' + profile + ' profile at ' + profileManifest + ')')
   process.exit(0)
 }
 
@@ -47,7 +48,7 @@ define('document', { createElement: () => ({ setAttribute() {}, remove() {}, tex
 define('navigator', { language: 'zh-CN', clipboard: { writeText: async () => {} } })
 define('fetch', async () => ({ status: 200, json: async () => ({ ok: true, data: {} }) }))
 
-await import('file://' + join(repoRoot, 'src', 'client.js'))
+await import(pathToFileURL(join(repoRoot, 'src', 'client.js')).href)
 if (capturedSpec === null) throw new Error('client half did not register itself with window.__ModuleLoader__')
 
 const plugin = capturedSpec.factory((name) => {
@@ -83,7 +84,7 @@ const props = {
 // page. The TDZ class of bug is still caught, because a hooks dependency
 // array is evaluated during render.
 const html = renderToStaticMarkup(React.createElement(tab.component, props))
-const needles = ['dig-root', 'dig-topbar', 'dig-shell', 'dig-empty']
+const needles = ['dgp-root', 'dgp-topbar', 'dgp-shell', 'dgp-empty']
 for (const needle of needles) {
   if (html.indexOf(needle) < 0) throw new Error('rendered output is missing: ' + needle)
 }
@@ -103,7 +104,7 @@ let previewDefinition = null
 const nativeBodies = {}
 const sidebarRightTabs = {
   register: (definition) => {
-    if (definition.id === 'dsh-ide-git-preview') previewDefinition = definition
+    if (definition.id === 'dsh-git-panel-preview') previewDefinition = definition
     else nativeDefinition = definition
     return () => {}
   },
@@ -131,8 +132,8 @@ const nativeCtx = {
 plugin.apply(nativeCtx)
 if (nativeDefinition === null) throw new Error('the native fallback registered no tab type')
 if (previewDefinition === null) throw new Error('the native fallback registered no preview tab type')
-const nativeBody = nativeBodies['dsh-ide-git']
-const previewBody = nativeBodies['dsh-ide-git-preview']
+const nativeBody = nativeBodies['dsh-git-panel']
+const previewBody = nativeBodies['dsh-git-panel-preview']
 if (nativeBody === null) throw new Error('the native fallback registered no tab body')
 if (previewBody === null) throw new Error('the native fallback registered no preview tab body')
 const guide = nativeDefinition.guide
@@ -147,8 +148,8 @@ const nativeHtml = renderToStaticMarkup(React.createElement(nativeBody, {
   sessionId: 'ssr-native',
   useWorkspaces: (selector) => selector({ items: [{ path: '/tmp/ssr-workspace', sessionIds: ['ssr-native'] }] }),
 }))
-if (nativeHtml.indexOf('dig-root') < 0) throw new Error('the native seat rendered no panel')
+if (nativeHtml.indexOf('dgp-root') < 0) throw new Error('the native seat rendered no panel')
 console.log('ssr-check: native right-sidebar seat rendered ' + nativeHtml.length + ' chars - OK')
 const previewHtml = renderToStaticMarkup(React.createElement(previewBody, { sessionId: 'ssr-native' }))
-if (previewHtml.indexOf('dig-preview-root') < 0) throw new Error('the preview seat rendered no body')
+if (previewHtml.indexOf('dgp-preview-root') < 0) throw new Error('the preview seat rendered no body')
 console.log('ssr-check: native preview tab rendered ' + previewHtml.length + ' chars - OK')

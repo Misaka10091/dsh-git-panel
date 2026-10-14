@@ -27,9 +27,8 @@ const mode = process.argv[4] === 'degraded' ? 'degraded' : 'native'
 mkdirSync(outDir, { recursive: true })
 
 function loadPlaywright() {
-  const checkout = process.env.DSH_CHECKOUT === undefined || process.env.DSH_CHECKOUT === ''
-    ? '/Users/kanna/project/deepseek-harness'
-    : process.env.DSH_CHECKOUT
+  const checkout = process.env.DSH_CHECKOUT
+  if (!checkout) throw new Error('Set DSH_CHECKOUT to a DSH source checkout with Playwright installed')
   const store = join(checkout, 'node_modules', '.pnpm')
   const candidates = []
   if (existsSync(store)) {
@@ -99,7 +98,7 @@ async function enterSession() {
      guide-entry button by TAB id and renders no description text, while DSH's own
      right sidebar keys it by the tab KIND and does render the description. */
   const guideCard = async () => {
-    for (const selector of ['[data-sidebar-right-guide-entry="dsh-ide-git:panel"]', '[data-sidebar-right-guide-entry="ide-git"]']) {
+    for (const selector of ['[data-sidebar-right-guide-entry="dsh-git-panel:panel"]', '[data-sidebar-right-guide-entry="git-panel"]']) {
       const found = page.locator(selector).first()
       if (await found.count() > 0) return found
     }
@@ -108,7 +107,7 @@ async function enterSession() {
   }
 
 async function ensurePanel() {
-  if (await page.locator('.dig-root:visible').count() > 0) return true
+  if (await page.locator('.dgp-root:visible').count() > 0) return true
   if (await guideCard() === null) {
     await clickText('稍后配置', 900)
     if (await guideCard() === null) await clickText('打开右侧边栏', 2500)
@@ -117,16 +116,16 @@ async function ensurePanel() {
   if (card === null) { log('MISS Git card'); return false }
   await card.click({ timeout: 8000 })
   await settle(5500)
-  await page.locator('.dig-body').first().waitFor({ timeout: 8000 }).catch(() => {})
+  await page.locator('.dgp-body').first().waitFor({ timeout: 8000 }).catch(() => {})
   await settle(1500)
-  return await page.locator('.dig-root:visible').count() > 0
+  return await page.locator('.dgp-root:visible').count() > 0
 }
 
 /** The panel's own DOM: rail actions, pane presence and the dock's layout surface. */
 async function readPanel() {
   return page.evaluate(() => {
     let root = null
-    for (const candidate of document.querySelectorAll('.dig-root')) {
+    for (const candidate of document.querySelectorAll('.dgp-root')) {
       if (candidate.getBoundingClientRect().width > 0) { root = candidate; break }
     }
     if (root === null) return { missing: true }
@@ -139,19 +138,19 @@ async function readPanel() {
       pressed: node.getAttribute('aria-pressed'),
       label: node.getAttribute('title'),
       disabled: node.disabled === true,
-      inHeader: node.closest('.dig-compact-bar') !== null,
+      inHeader: node.closest('.dgp-compact-bar') !== null,
     }))
     const tree = root.querySelector('[data-pane="tree"]')
     return {
       panel: box(root),
-      chrome: (root.querySelector('.dig-body').className.match(/dig-body-(columns|stack|compact)/) || [null, 'none'])[1],
+      chrome: (root.querySelector('.dgp-body').className.match(/dgp-body-(columns|stack|compact)/) || [null, 'none'])[1],
       actions: actions,
       tree: tree === null ? null : box(tree),
       floats: document.querySelectorAll('[data-dockkit-float]').length,
-      paneRoots: [...document.querySelectorAll('[data-dockkit-pane]')].filter((pane) => pane.querySelector('.dig-root') !== null).length,
+      paneRoots: [...document.querySelectorAll('[data-dockkit-pane]')].filter((pane) => pane.querySelector('.dgp-root') !== null).length,
       panes: document.querySelectorAll('[data-dockkit-pane]').length,
       dividers: document.querySelectorAll('[data-dockkit-divider]').length,
-      floatHoldsPanel: document.querySelector('[data-dockkit-float] .dig-root') !== null,
+      floatHoldsPanel: document.querySelector('[data-dockkit-float] .dgp-root') !== null,
       modes: [...document.querySelectorAll('[data-sidebar-right-mode]')].map((node) => node.getAttribute('aria-label')),
     }
   })
@@ -162,17 +161,17 @@ const has = (state, id) => action(state, id).length > 0
 
 /** Click a rail action, through `⋯ 更多` when the strip ran out of room. */
 async function clickAction(id) {
-  const direct = page.locator('.dig-root:visible [data-action="' + id + '"]').first()
+  const direct = page.locator('.dgp-root:visible [data-action="' + id + '"]').first()
   if (await direct.count() > 0) {
     await direct.click({ timeout: 6000 })
     await settle(1400)
     return true
   }
-  const more = page.locator('.dig-root:visible .dig-rail-more').first()
+  const more = page.locator('.dgp-root:visible .dgp-rail-more').first()
   if (await more.count() === 0) return false
   await more.click({ timeout: 6000 })
   await settle(600)
-  const item = page.locator('.dig-menu [data-action="rail:' + id + '"]').first()
+  const item = page.locator('.dgp-menu [data-action="rail:' + id + '"]').first()
   if (await item.count() === 0) return false
   await item.click({ timeout: 6000 })
   await settle(1400)
@@ -217,7 +216,7 @@ try {
     check(has(start, 'float') && has(start, 'split') && has(start, 'fullscreen'),
       'float / split / full screen all render on the native seat')
     check(action(start, 'float')[0].label === '浮动本页', 'the float button says what it does (' + action(start, 'float')[0].label + ')')
-    await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'dock-1-docked.png') })
+    await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'dock-1-docked.png') })
 
     await clickAction('float')
     const floated = await readPanel()
@@ -227,7 +226,7 @@ try {
     check(action(floated, 'float')[0] !== undefined && action(floated, 'float')[0].label === '收回停靠',
       'the button flipped to 收回停靠 while floating')
     rows.push({ step: 'float', detail: 'floats=1, panel inside the float' })
-    await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'dock-2-floating.png') })
+    await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'dock-2-floating.png') })
 
     await clickAction('float')
     const dockedBack = await readPanel()
@@ -235,14 +234,14 @@ try {
     check(dockedBack.floats === 0 && dockedBack.paneRoots === 1, 'the same button docked it back into the column')
     check(action(dockedBack, 'float')[0].label === '浮动本页', 'and the label flipped back')
     rows.push({ step: 'dock back', detail: 'floats=0, panel back in a pane' })
-    await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'dock-3-docked-back.png') })
+    await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'dock-3-docked-back.png') })
 
     await clickAction('split')
     const split = await readPanel()
     log('after split: panes=' + split.panes + ' dividers=' + split.dividers)
     check(split.panes === 2 && split.dividers === 1, 'split() produced a second pane and its divider')
     rows.push({ step: 'split', detail: 'panes=2 dividers=1' })
-    await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'dock-4-split.png') })
+    await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'dock-4-split.png') })
 
     const before = (await readPanel()).modes
     await clickAction('fullscreen')
@@ -253,7 +252,7 @@ try {
     check(action(full, 'fullscreen') !== undefined && action(full, 'fullscreen')[0].label === '退出全屏',
       'the button flipped to 退出全屏 (' + (action(full, 'fullscreen')[0] === undefined ? 'gone' : action(full, 'fullscreen')[0].label) + ')')
     rows.push({ step: 'full screen', detail: JSON.stringify(full.modes) })
-    await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'dock-5-fullscreen.png') })
+    await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'dock-5-fullscreen.png') })
     await clickAction('fullscreen')
     await settle(800)
     const back = await readPanel()
@@ -268,13 +267,13 @@ try {
   const narrow = await readPanel()
   log('narrow: panel ' + narrow.panel[2] + ' chrome=' + narrow.chrome + ' header tree=' + JSON.stringify(action(narrow, 'tree').filter((entry) => entry.inHeader)))
   check(narrow.chrome === 'compact', 'the panel is in the compact chrome (' + narrow.chrome + ')')
-  const headerButton = page.locator('.dig-root:visible .dig-compact-bar [data-action="tree"]').first()
+  const headerButton = page.locator('.dgp-root:visible .dgp-compact-bar [data-action="tree"]').first()
   check(await headerButton.count() === 1, 'the compact header carries a tree control')
   await headerButton.click({ timeout: 6000 })
   await settle(1200)
   const headerFolded = await readPanel()
   check(headerFolded.tree === null, 'it folded the tree')
-  const stillThere = page.locator('.dig-root:visible .dig-compact-bar [data-action="tree"]').first()
+  const stillThere = page.locator('.dgp-root:visible .dgp-compact-bar [data-action="tree"]').first()
   check(await stillThere.count() === 1, 'and it is STILL THERE while the tree is folded (the deadlock that made a folded tree unrecoverable)')
   check(action(headerFolded, 'tree').filter((entry) => entry.inHeader)[0].pressed === 'false', 'reporting the folded state')
   await stillThere.click({ timeout: 6000 })
@@ -282,7 +281,7 @@ try {
   const headerOpen = await readPanel()
   check(headerOpen.tree !== null, 'clicking it again brought the tree back')
   rows.push({ step: 'compact header tree', detail: 'folded and recovered' })
-  await page.locator('.dig-root').first().screenshot({ path: join(outDir, 'dock-6-compact-tree.png') })
+  await page.locator('.dgp-root').first().screenshot({ path: join(outDir, 'dock-6-compact-tree.png') })
 } catch (error) {
   log('FAILED: ' + String(error.message).slice(0, 400))
   failures.push(String(error.message).slice(0, 200))

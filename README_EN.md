@@ -1,145 +1,79 @@
-# dsh-ide-git
-
-[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+# dsh-git-panel
 
 [简体中文](README.md) | English
 
-> An **IDE-grade Git tool window** for the [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) sidebar — branch tree on the left, commit graph in the middle, changes and commit details on the right, with JetBrains-style actions. Registered as a native [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) tab, usable in both the native right sidebar and the bottom workbench; since v0.13.0 also as a **conversation-area tab** (a Git tab beside Chat/Trajectory, switchable off in settings).
+> A Git panel for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), derived from [KannaKuron/dsh-ide-git](https://github.com/KannaKuron/dsh-ide-git). It opens a collapsible repository list similar to VS Code Source Control, with the full Git workbench retained.
 
-DSH's built-in Git panel covers stage / commit / revert / history. `dsh-ide-git` adds the layer IDE users expect: a **branch tree with a full context menu**, a **commit graph**, **commit details with per-file diffs**, a **grouped changes list** and a commit box.
+Current version: **0.1.0**. Upstream baseline: **dsh-ide-git 0.18.2**, commit `b4e4b5a176de7da9060d1225d9ed027a8df8472c`. See [UPSTREAM.md](UPSTREAM.md) for attribution and update instructions.
 
-## Screenshots
+## Current state
 
-> Captured from a **clean DSH with only two plugins installed** (`dsh-better-sidebar` + this one), bound to a fictional demo repository (`scripts/demo-repo.mjs`). No real workspace, no wallpaper plugin and no other panel is in frame; the whole sequence is reproducible with `scripts/screenshots.mjs`.
+The fork retains the upstream branch tree, commit graph, changes, staging, commit box, file diffs, commit details, stash, tags, branch and remote operations, AI commit messages and conversation integration.
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/1-bottom-workbench.png" alt="Bottom workbench: branch tree / commit graph / changes"/></td>
-<td valign="top"><b>Bottom workbench (wide → three panes)</b><br/>A JetBrains-style action rail whose button count follows the rail's <b>own height</b> (overflow folds into <code>⋯</code>, and <code>⚙</code> at the end reorders or hides actions), a commit list in IDEA column order (<b>date → author → graph → refs → subject</b>) with the filter row above it (text/hash, branch or tag, author, date, path), and the changes pane with the commit box.</td>
-</tr>
-</table>
+It supports Better Sidebar, the native DSH right sidebar and the conversation-area Git tab. Repository discovery and selection already cover the workspace repository, nested repositories and initialized submodules.
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/2-commit-menu.png" alt="Commit context menu"/></td>
-<td valign="top"><b>Commit context menu</b><br/>Details, copy revision, checkout, new branch here, new tag, cherry-pick, revert, reset here (keep / discard) — destructive rows in red, positioned inside the panel so it opens in the bottom workbench too.</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/3-branch-undo.png" alt="Undo toast after deleting a branch"/></td>
-<td valign="top"><b>Deletes are reversible</b><br/>Deleting a branch or a stash is a <b>real delete</b>, but the host records the object id first: the toast in the corner offers <b>Undo</b> (one-shot, valid 30 minutes), and the toolbar keeps a “recently deleted” menu for when the toast is gone. Deleting <code>main</code>/<code>master</code> asks you to type the branch name.</td>
-</tr>
-</table>
+The default panel is titled **Git**. Each row shows its repository name, branch and changed-file count, with refresh, stage-all and history-workbench actions. Expand it for staged, changed and untracked files and its own commit box. Stage, unstage, commit, commit-and-push, confirmed discard, available undo handles and diff previews target that row's repository.
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/4-rail-settings.png" alt="Action rail settings: order and visibility"/></td>
-<td valign="top"><b>Configurable action rail</b><br/>Drag or use the arrows to reorder, the eye to hide an action. Only the permutation and the hidden set are stored (normalised), so a later version that adds an action never breaks an existing config.</td>
-</tr>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/5-commit-detail.png" alt="Commit details with a per-file diff"/></td>
-<td valign="top"><b>Commit details</b><br/>Full message, author and date, changed files with +/− counts, and a line-level diff with gutters, hunk highlighting and red/green backgrounds.</td>
-</tr>
-</table>
+Drafts, expansion, file selection, busy state and errors belong to individual rows. Folding or visiting the workbench preserves row drafts. Failed commits keep their draft; a successful commit with a failed push clears the committed draft and displays the push error. Discards without a usable undo snapshot explicitly say so. Stale responses cannot overwrite the current workspace or session.
 
-<table>
-<tr>
-<td align="center" width="58%"><img src="docs/screenshots/6-right-sidebar.png" alt="The same panel in the native right sidebar"/></td>
-<td valign="top"><b>One registration, two layouts</b><br/>In the narrow, tall <b>native right sidebar</b> the same panel stacks: rail as a single row on top, changes first, history below. The panel only measures itself — it never guesses which container it is in.</td>
-</tr>
-</table>
+Summary scans share four concurrent slots. Visible lists poll lightweight summaries every 12 seconds; hidden lists stop polling. The host write queue canonicalizes the Git checkout root and physical path, serializing subfolder, filesystem-alias and Windows-case variants of the same checkout. Different repositories and linked worktrees remain independent. `rebaseAbort` now uses the write queue. Binding requests to session workspace scope remains future work.
 
-## Send to chat
+## Development
 
-Everything in the panel can be right-clicked into the **current session's composer** — through DSH's official insertion channel (it appends at the tail without touching what you already typed; while sending, or when the service is absent, it falls back to copying the payload with a toast, never a dead click):
-
-- **Commit** → `git commit 47ad017 "Subject" (repo xxx)`: short hash + message + repository, one sentence naming a revision;
-- **Branch** → `git branch main (repo xxx)`;
-- **File** (change rows and commit-detail file rows) → a `@path` file reference chip (DSH's native @ grammar, quoted paths included) or just the raw path;
-- **Selected diff lines**: select some text in a diff window (opened from a commit detail or the working tree), right-click → **Send selected lines to chat**: an `@file` chip plus a line note — `lines N–M (commit 47ad017 "Subject" @ branch)` for a commit, `lines N–M (worktree, staged / uncommitted)` for the working tree. Numbers are reconstructed from the diff rows under the selection against the patch's hunk headers, in **new-file numbering**; a purely deleted span reports OLD numbers and says so. If the selection cannot be pinned to diff rows the menu degrades to **Send selected snippet to chat** (text truncated at 600 characters) instead of inventing numbers, and a **Copy the selection reference** item is always there. With no selection the browser's own menu stays.
-
-Also in place: change-row and detail-file-row icons are tinted by extension (DSH's own FileTypeIcon); diff previews render through DSH's own DiffBlock (red/green rows, copy / wrap toolbar, host-consistent visuals); the diff window's height is draggable and remembered per placement; and the whole panel can live in the **main conversation area** — the Git tab next to Dialogue / Trace, switchable in the plugin settings.
-
-## Where it mounts: two hosts, one panel
-
-The plugin registers once; which surface it lands on is the **host's** decision, and the two doors are exclusive:
-
-| Host | When | What you get |
-|---|---|---|
-| **dsh-better-sidebar** (optional) | whenever it is installed | its tab system: the tab in the right sidebar **plus the bottom workbench**; the plugin also shows up as a card in its settings page |
-| **DSH's own right sidebar** | automatically, when better-sidebar is absent | a **Git** capsule on the sidebar's guide page — the very same panel |
-| **Conversation-area tab** (since v0.13.0) | always on (switchable in settings) | a **Git** tab beside Chat/Trajectory at the top of the conversation — clicking it turns the whole conversation area into the Git tool window; the switch lives in the plugin settings under Placement |
-
-better-sidebar wins while it is there (it also carries the bottom workbench); a late-arriving better-sidebar takes the native registration down and hosts the tab itself. Installing this plugin alone is fully supported — no prerequisite.
-
-The same panel shows up on surfaces of very different shapes, so the layout measures instead of guessing:
-
-| Surface | Shape | Layout here |
-|---|---|---|
-| Right sidebar (native, or bridged by better-sidebar) | narrow + tall | `stack`: changes above the graph, collapsible branch pane |
-| Bottom workbench (better-sidebar only) | wide + flat | `columns`: tree / graph / changes — the JetBrains Git tool window shape |
-
-The panel never guesses: it measures itself with a `ResizeObserver` (width ≥ 600px and width ≥ 1.15 × height → columns, otherwise stack — width decides, height has no veto), so free-floating windows and the mobile drawer adapt too.
-
-## Features
-
-- Action rail: the JetBrains-style vertical strip in the bottom workbench (and one horizontal row under the header in the right sidebar) with refresh, new branch, checkout, delete, compare, show diff, stash, new tag, favorite, fetch, pull and push. **It shows as many buttons as fit**, folds the rest into a `⋯ more` menu, and pins a `⚙ settings` button that lets you reorder actions and toggle each of them (stored in `dsh-ide-git.rail.v1`). Every action lights up or greys out with the current state (no other branch → delete / checkout / compare off, no remote → fetch / push off, no upstream → pull off, no changes → diff off).
-- Status line: branch, upstream, ahead/behind, stash count, busy indicator.
-- Branch tree: HEAD / Local / Remote / Tags groups, filter box, ahead/behind badges, worktree marker; local blue / remote violet / tag amber / HEAD green.
-- Branch context menu: checkout, rebase current onto this, merge into current, compare with current, new branch from here, rename, delete, fetch, push, send to chat (branch + repo).
-- History filters: text or hash, branch or tag, author, date (today / 7 days / 30 days / this year), an order toggle (newest / oldest first) and one-click clear; the path filter runs server-side (`git log -- <path>`) on Enter.
-- Commit list: IDEA column order — **date → author → graph → refs → subject**; a lane graph whose segments span whole rows (pixel-aligned across rows), a hollow dot for HEAD, refs badges (HEAD green / local blue / remote violet / tag amber, at most three plus `+n`), load more (120 per page).
-- Commit context menu: details, copy revision, checkout revision, new branch here, new tag, cherry-pick, revert, reset here (keep / discard changes), send to chat (short hash + message + repo).
-- Commit details: full message, author/date, changed files with +/− and per-file line diff.
-- Diff pane: rendered with DSH's own DiffBlock (red/green rows plus a copy / wrap toolbar), draggable height remembered per placement; **select diff rows and right-click** to send a line-level reference into the conversation — an `@file` chip plus the line range with commit (hash / subject / current branch) or worktree (staged / uncommitted) context; deleted rows are labelled as old-numbered, selections that cannot be pinned to rows degrade to the raw snippet (truncated at 600 characters), and a copy-reference item is always available.
-- Changes: conflicts / staged / changes / untracked groups, inline stage / unstage / discard, group-level actions, click for diff.
-- Commit box: multi-line message, Ctrl+Enter (Cmd+Enter) to commit, amend.
-- File context menu: show diff, stage / unstage, discard changes, copy path, send to chat (an `@file` reference chip or the raw path).
-- **Safety and undo**: deleting a branch or a stash pops a toast in the corner with an **Undo** action — the delete is real, and undo recreates the ref from the object id recorded just before it (one-shot, valid for 30 minutes). Deleting `main` / `master` / `trunk` requires typing the branch name, destructive dialogs focus Cancel instead of the red button, writes are serialised per repository on the host, and while a merge / rebase / cherry-pick / revert / bisect is still open the affected actions are greyed out with the reason.
-
-## Install
+Git must be on PATH. Plugin runtime requires Node.js >=18 and DSH >=0.1.6-alpha.2. Node.js 24 is recommended for development and CI because the inherited tests use newer Node APIs. Better Sidebar >=0.12.0 is optional. Both entries are plain JavaScript with no build step; regular tests do not need the DSH peer dependencies installed.
 
 ```sh
-# works on its own: the panel lands in DSH's native right sidebar
-dsh plugin --profile web add dsh-ide-git
-# optional: adds the bottom workbench and better-sidebar's sidebar chrome
-dsh plugin --profile web add dsh-better-sidebar
+npm test
+npm run check:syntax
+npm run check:ssr
+npm pack --dry-run
 ```
 
-Restart `dsh web`, then:
+The SSR check resolves React from a local DSH profile. It uses `web` by default; set `DSH_HOME` and `DSH_PROFILE` to choose another location. Missing profiles or React produce an explicit skip. For a Windows desktop profile:
 
-- **plugin alone** — open the right sidebar from the session header and pick the **Git** capsule on the guide page;
-- **with better-sidebar** — pick **Git** from the bottom panel's `+` menu, or from the native right sidebar's `+` menu (one registration, one state);
-- with better-sidebar present the plugin also appears as a card in its settings page (side cards), where it can be disabled.
+```powershell
+$env:DSH_PROFILE = 'desktop'
+npm run check:ssr
+```
 
-### Compatibility
+## Repository browser verification
 
-- `engines.dsh` is **`>=0.1.2-0`**: every DSH from 0.1.2 up, prereleases such as `0.1.5-rc` / `0.1.6-alpha` included (plain semver never matches a prerelease against a range, hence the `-0` floor). **The same value is also the `@deepseek-ai/dsh` peerDependency**: DSH 0.1.7+ enforces `@deepseek-ai/dsh*` peer ranges (an unsatisfied one keeps the plugin from loading) while nothing reads `engines`, so the peer is where the fact has to live. The range is an **open floor with no ceiling**, so no host from 0.1.7 on (prereleases included) can be rejected by it, and 0.1.0–0.1.6 never run that check at all.
-- Three long-lived contracts, nothing else: the host's `webServer.register({ kind: 'prefix' })` route, the client's `window.__ModuleLoader__.load({ id, factory })`, and the client `slots` service. It does **not** import the `ui-primitives` icon set (every icon is an inline SVG), so host icon changes cannot reach it.
-- better-sidebar is an **optional** peer: absent, broken, or waiting on its own upstream fix, the plugin still mounts in the native right sidebar.
+`scripts/repositories-probe.mjs` loads the real client with React 19.2 and mocked host/Git services in an isolated Chrome profile. Test dependencies are `playwright-core@1.58.2` and `esbuild@0.25.12` under `.local/browser-fixture/node_modules`, and `react@19.2.0` / `react-dom@19.2.0` under `.local/ssr/profiles/web/node_modules`. These add no plugin runtime dependencies or production build step.
 
-### Interface language
+Run `node scripts/repositories-probe.mjs --prepare`, execute its printed esbuild executable command, then run `node scripts/repositories-probe.mjs --full`. Re-prepare and rebuild after source or probe changes. Reports, the isolated browser profile and screenshots at 1440×860, 360×820, 320×640 and 1100×300 are written under ignored `.local/repositories-probe/`.
 
-Follows DSH's locale setting (`ctx.locale`) and switches live. **21 dictionaries** ship with the plugin: Simplified and Traditional Chinese (including `zh-HK` / `zh-MO` / `zh-TW`), English, Japanese, Korean, German, French, Italian, Portuguese, Russian, Dutch, Polish, Swedish, Turkish, Indonesian, Vietnamese, Thai, Hindi and Arabic. They are also published to DSH's locale registry through `ctx.locale.register`. Resolution is "exact tag → primary subtag → English", and **English is always the key-complete dictionary** — any language without a dictionary falls back to it rather than showing raw keys.
+Full mode covers independent drafts and folding, target roots and busy states, workbench roundtrip, cross-repository diff, failed commit retry, push partial success, discard undo warnings, failed writes interleaved with stale summaries, stale workspace responses and overflow. **This does not validate the real DSH host.** AGENTS.md still requires an installed-plugin test instance with explicit URL and `DSH_CHECKOUT` for integration probes. Installation into the current desktop profile was authorized and completed: live repository discovery and nested-repository summary succeed. The unborn-repository fix is installed and all 58 API/repository tests pass, but the running host still caches the previous module and needs a restart. The isolated browser has no authenticated session for the current GUI, so live page data-state verification remains pending.
 
-The dictionaries live in the `LOCALES` table inside `src/client.js`: one entry per language, each preceded by a `/* locale: <tag> */` marker. **The check is automatic** — a smoke test requires every dictionary to carry exactly the same key set as Chinese, because a missing key falls back to English silently and leaves the panel half-translated, which is what that test exists to catch.
+## Local installation
 
-## How it works
-
-- **Host half** (`src/index.js`): one prefix route `/dsh-ide-git/api` with a 32-method table. Every git call is an argv array through `spawn` — no shell string, no `exec` — with argument validation (absolute paths, refs never start with `-`, paths stay inside the repository).
-- **Client half** (`src/client.js`): no build step, single file, `window.__ModuleLoader__.load({ id, factory })`, requiring only `react` (a DSH client baseline module).
-- **Trust fence**: only loopback Hosts, or same-origin browser requests (`Sec-Fetch-Site`), are served.
-- **Destructive actions** (push, hard reset, force delete, discarding untracked files, dropping a stash) require an explicit `confirm: true` and always ask in the UI first.
-
-## Tests
+The fork has not been published to npm. From the project directory:
 
 ```sh
-npm test   # smoke (file-level invariants) + api (a real throwaway repo driven through the host route)
+npm pack
+dsh plugin --profile desktop add file:./dsh-git-panel-0.1.0.tgz
 ```
 
-## Limits / roadmap
+Host changes require restarting DSH; client changes require reloading the page. Project initialization does not install the plugin or restart an instance.
 
-v0.1.0 covers the main path. Still missing: multi-select and partial commits (changelists), interactive rebase / fixup / squash, patches, a merge-conflict editor, blame and file history, plugin-owned settings rows, a worktree view, and desktop-client verification. Large repositories: paginated log and a 400KB diff cap.
+## Identity
+
+The package, host, client module and locale namespace are `dsh-git-panel`; the manifest ID is `dsh-external/dsh-git-panel`. The Cordis row and config namespace are `git-panel`, the API prefix is `/dsh-git-panel/api`, and the Better Sidebar tab is `dsh-git-panel:panel`.
+
+Native main and preview IDs are `dsh-git-panel` and `dsh-git-panel-preview`; the conversation view ID is `git-panel`. Browser storage uses `dsh-git-panel.*`, and CSS/DOM classes use `dgp-`. These identities are separate from the upstream plugin.
+
+## Next development steps
+
+1. Verify installation, registration, themes and host integration in an authorized isolated DSH instance.
+2. Bind requests to session workspace scope and extend consistent path identity to undo storage.
+3. Support VS Code repository scan settings and improve summary/statistics loading for large workspaces.
+4. Retain the graph, diff and detailed workbench while improving source organization.
+
+## Project files
+
+Host API lives in `src/index.js`; the client UI and styles live in `src/client.js`. Tests cover smoke checks, real-repository API operations, graph layout and discovery. Scripts provide SSR checks, demo fixtures, the isolated repository-list probe and host integration probes that require a test instance with this fork installed.
+
+Screenshots in `docs/screenshots/` are preserved upstream examples, not newly verified screenshots of this fork. See [AGENTS.md](AGENTS.md) for development rules and [CHANGELOG.md](CHANGELOG.md) for project changes and retained upstream history.
 
 ## License
 
-MIT © KannaKuron
+[MIT](LICENSE), retaining `Copyright (c) 2026 KannaKuron`. Upstream marketplace inclusion and publication credentials do not transfer to this fork. Own repository and publication metadata will be added when those destinations are established.

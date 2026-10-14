@@ -15,7 +15,13 @@
  *     instead of a burst the Host can lose inside its persist cycle;
  *  5. zero uncaught page errors throughout.
  *
- * Playwright is loaded from the DSH checkout (DSH_CHECKOUT overrides the path).
+ * Playwright is loaded from the DSH checkout (DSH_CHECKOUT overrides the path)
+ * or, failing that, from .local/browser-fixture/node_modules (the same
+ * playwright-core the other probes vendor), driving an installed Chrome/Edge.
+ * The card now spans FOUR sections with three id prefixes (dgp-rail-,
+ * dgp-placement-, dgp-list-), so every checkbox is addressed by its full id —
+ * and because this probe runs against LIVE profiles, it restores every switch
+ * to its pre-probe state before exiting.
  */
 import { createRequire } from 'node:module'
 import { mkdirSync, readdirSync, existsSync, readFileSync } from 'node:fs'
@@ -31,13 +37,32 @@ const patchFile = process.argv[4] === undefined || process.argv[4] === '' ? '' :
 mkdirSync(outDir, { recursive: true })
 
 function loadPlaywright() {
-  const checkout = process.env.DSH_CHECKOUT === undefined || process.env.DSH_CHECKOUT === '' ? '/Users/kanna/project/deepseek-harness' : process.env.DSH_CHECKOUT
-  for (const name of readdirSync(join(checkout, 'node_modules', '.pnpm'))) {
-    if (name.indexOf('playwright@') !== 0) continue
-    const candidate = join(checkout, 'node_modules', '.pnpm', name, 'node_modules', 'playwright', 'package.json')
-    if (existsSync(candidate)) { try { return createRequire(candidate)('playwright') } catch (error) { void error } }
+  const checkout = process.env.DSH_CHECKOUT
+  if (checkout) {
+    for (const name of readdirSync(join(checkout, 'node_modules', '.pnpm'))) {
+      if (name.indexOf('playwright@') !== 0) continue
+      const candidate = join(checkout, 'node_modules', '.pnpm', name, 'node_modules', 'playwright', 'package.json')
+      if (existsSync(candidate)) { try { return createRequire(candidate)('playwright') } catch (error) { void error } }
+    }
   }
-  throw new Error('playwright not found')
+  /* Same vendored playwright-core the repositories probe uses — keeps this
+     probe runnable on machines without a full DSH source checkout. */
+  const fixture = join(import.meta.dirname, '..', '.local', 'browser-fixture', 'node_modules', 'playwright-core', 'package.json')
+  if (existsSync(fixture)) { try { return createRequire(fixture)('playwright-core') } catch (error) { void error } }
+  throw new Error('playwright not found (set DSH_CHECKOUT or install .local/browser-fixture)')
+}
+
+function findBrowser() {
+  const candidates = [
+    join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium',
+  ]
+  const executable = candidates.find((path) => existsSync(path))
+  if (executable === undefined) throw new Error('No installed Chrome / Edge found; no browser is downloaded automatically.')
+  return executable
 }
 
 const failures = []
@@ -51,7 +76,7 @@ const check = (ok, message) => {
 const settle = (ms) => page.waitForTimeout(ms === undefined ? 900 : ms)
 
 const { chromium } = loadPlaywright()
-const browser = await chromium.launch({ headless: true, channel: 'chrome' })
+const browser = await chromium.launch({ headless: true, executablePath: findBrowser() })
 const page = await browser.newPage({ viewport: { width: 1500, height: 1000 }, deviceScaleFactor: 1 })
 const pageErrors = []
 page.on('pageerror', (error) => { pageErrors.push(String(error.message)); log('PAGEERROR ' + String(error.message).slice(0, 240)) })
@@ -70,8 +95,8 @@ async function clickText(text, wait) {
 }
 
 async function ensurePanel() {
-  if (await page.locator('.dig-root:visible').count() > 0) return true
-  const entry = () => page.locator('[data-sidebar-right-guide-entry="dsh-ide-git:panel"]').first()
+  if (await page.locator('.dgp-root:visible').count() > 0) return true
+  const entry = () => page.locator('[data-sidebar-right-guide-entry="dsh-git-panel:panel"]').first()
   if (await entry().count() === 0) {
     await clickText('稍后配置', 900)
     if (await entry().count() === 0) await clickText('打开右侧边栏', 2500)
@@ -79,31 +104,51 @@ async function ensurePanel() {
   if (await entry().count() === 0) return false
   await entry().click({ timeout: 8000 })
   await settle(5000)
-  return await page.locator('.dig-root:visible').count() > 0
+  return await page.locator('.dgp-root:visible').count() > 0
 }
 
 async function openCard() {
-  await page.locator('.dig-root:visible .dig-rail-settings').first().click({ timeout: 6000 })
-  await settle(2500)
+  /* The plugin page (the `page` target) may already show the card — skip the
+     navigation entirely then. v0.1.0+ otherwise opens into the repositories
+     view, which hosts no action rail: enter the workbench through the first
+     repository's workbench action before the settings button exists. */
+  if (await page.locator('[data-plugin-config] .dgp-settings').count() === 0) {
+    const settingsButton = page.locator('.dgp-root:visible .dgp-rail-settings').first()
+    if (await settingsButton.count() === 0) {
+      const row = page.locator('.dgp-root:visible .dgp-repository[data-repo-root]').first()
+      if (await row.count() === 0) {
+        log('FAIL no repository rows discovered — the instance workspace has no git repositories to enter')
+        failures.push('no repository rows discovered')
+        return -1
+      }
+      await row.locator('[data-action="workbench"]').click({ timeout: 6000 })
+      await settle(2500)
+    }
+    await page.locator('.dgp-root:visible .dgp-rail-settings').first().click({ timeout: 6000 })
+    await page.waitForSelector('[data-plugin-config] .dgp-settings', { timeout: 10000 }).catch(() => {})
+    await settle(1500)
+  }
   /* The card's sections are collapsible and ship COLLAPSED, so the switches this
      probe drives are not in the DOM until their section is unfolded. Open every
      fold head before any assertion runs (also re-opens after each reload). */
-  const heads = page.locator('[data-plugin-config] .dig-foldHead')
+  const heads = page.locator('[data-plugin-config] .dgp-foldHead')
   const headCount = await heads.count()
   for (let index = 0; index < headCount; index++) {
     try { await heads.nth(index).click({ timeout: 4000 }); await settle(300) } catch (error) { void error }
   }
-  return page.locator('[data-plugin-config] .dig-settings').count()
+  return page.locator('[data-plugin-config] .dgp-settings').count()
 }
 
+/* Every checkbox in the card, keyed by its FULL id — rail switches carry
+   dgp-rail-, the placement rows dgp-placement-, the list/cache rows dgp-list-. */
 const visuals = () => page.evaluate(() => Object.fromEntries(
-  [...document.querySelectorAll('[data-plugin-config] input[type=checkbox]')].map((box) => [box.id.replace('dig-rail-', ''), box.checked]),
+  [...document.querySelectorAll('[data-plugin-config] input[type=checkbox]')].map((box) => [box.id, box.checked]),
 ))
 const status = () => page.evaluate(() => {
-  const card = document.querySelector('[data-plugin-config] .dig-settings')
+  const card = document.querySelector('[data-plugin-config] .dgp-settings')
   return card === null ? null : card.getAttribute('data-settings-status')
 })
-const box = (id) => page.locator('[data-plugin-config] input#dig-rail-' + id).first()
+const box = (id) => page.locator('[data-plugin-config] input#' + id).first()
 /* The persisted row Config: an absent key means the Host default, which is shown. */
 const patchValues = () => {
   if (patchFile === '') return null
@@ -133,7 +178,10 @@ try {
 
   const ids = Object.keys(await visuals())
   check(ids.length >= 12, 'one switch per rail action (' + ids.length + ')')
-  const target = ids.indexOf('stash') >= 0 ? 'stash' : ids[0]
+  const target = ids.indexOf('dgp-rail-stash') >= 0
+    ? 'dgp-rail-stash'
+    : ids.find((id) => id.indexOf('dgp-rail-') === 0) || ids[0]
+  const initial = await visuals()
 
   /* 1 — a tick flips within 100ms, both directions. */
   const start = (await visuals())[target]
@@ -194,6 +242,20 @@ try {
   const persisted = await visuals()
   const lost = ids.filter((id) => persisted[id] !== !beforeBurst[id])
   check(lost.length === 0, 'the burst survived a reload (' + (lost.length === 0 ? 'all ' + ids.length : lost.join(',')) + ')')
+
+  /* Restore — this probe may run against a LIVE profile, so every switch goes
+     back to where it started before the browser closes. */
+  await settle(1000)
+  for (const id of ids) {
+    if ((await visuals())[id] === initial[id]) continue
+    await box(id).click({ timeout: 6000 }).catch(() => {})
+    await settle(80)
+  }
+  await settle(3000)
+  const restored = await visuals()
+  const unrestored = ids.filter((id) => restored[id] !== initial[id])
+  check(unrestored.length === 0, 'every switch restored to its pre-probe value'
+    + (unrestored.length === 0 ? '' : ' (left flipped: ' + unrestored.join(',') + ')'))
 
   check(pageErrors.length === 0, 'no uncaught page errors')
 } catch (error) {

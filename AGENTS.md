@@ -1,105 +1,58 @@
 # AGENTS.md
 
-面向后续在本仓库继续开发的 Agent / 贡献者。读完再动手。
+面向 `dsh-git-panel` 的后续开发者。此项目基于 `KannaKuron/dsh-ide-git` 0.18.2，来源与固定提交见 [UPSTREAM.md](UPSTREAM.md)。
 
-## 项目一句话
+## 项目方向
 
-「dsh-ide-git」:DSH 插件(dsh-better-sidebar 消费插件),把 IDE(JetBrains)风格的 Git 工具窗口做成侧边栏原生 Tab——分支树 + 提交图谱 + 变更/提交 + 提交详情;右侧栏(窄高)与底部工作台(宽扁)同一注册、两种布局。
+提供通用 Git 面板：可折叠仓库总览、逐仓库状态与操作，以及完整的分支、图谱、变更和 diff 工作台。当前 0.1.0 已建立独立项目并实现默认的可折叠仓库列表、逐仓库状态与操作。隔离浏览器验证覆盖真实客户端和模拟宿主；现已获授权安装到当前桌面 profile，并验证真实仓库发现与嵌套仓库摘要。首次提交前仓库修复已安装，运行中宿主需重启加载；真实 GUI 数据态尚因独立浏览器缺少登录会话而未验证，不应把模拟宿主或真实 API 验证宣称为真实 GUI 验证。
 
-## 环境与工具
+## 项目身份
 
-- GitHub 操作一律用 gh(已认证 KannaKuron)。**npm 发布通道(v0.4.2 起)**:.github/workflows/npm-publish.yml(OIDC:node 24 + id-token: write,零令牌),Trusted Publisher 已登记(repo=KannaKuron/dsh-ide-git,file=npm-publish.yml,permissions=publish);日常发版 = 更新 CHANGELOG → npm version patch/minor → push --tags → gh release create,Release published 自动发 npm;发完 curl -X PUT https://registry.npmmirror.com/dsh-ide-git/sync 同步镜像。v0.4.1 为手动 bootstrap 首版(令牌建包,无 Release)。
-- CI(`.github/workflows/ci.yml`)只跑 `npm test`(smoke + api + graph 三层),不发布任何东西;npm 发布走 npm-publish.yml(Release 触发,见上一条)。
-- 本机联调:把包名加进 profile 的 `dsh.profile.bundles`(依赖指向仓库里的 tarball)→ 客户端半改动硬刷新页面即可,宿主半改动需要重启 `dsh web`(见不变量 11)——**重启由用户自己做**,规则见下一条。
-  - **先核对安装形态,再决定怎么迭代**:2026-09-26 记录的是「`dsh plugin add file:<仓库目录>` 装出来的是硬链接」,但**同日独立复核实测为副本**(`node_modules/<pkg>/src/client.js` 链接数 1,且改了仓库之后实例里仍是旧代码、页面刷新不生效)——同一个 `dsh` 版本下两种形态都出现过,可能是 `dsh plugin add` 与 pnpm 的 copy 策略差异。**动手前先 `ls -l` 看链接数、`shasum` 比对内容**:链接数 1 = 副本,迭代时要把改动同步进实例(重装/`cp`)并重启;链接数 2 = 硬链接,改仓库即可。想往 `node_modules` 里放一份「改动前」的代码做对比基线时,`git show HEAD:src/client.js > node_modules/<pkg>/src/client.js` 这种就地写入会把**仓库里的实现一起打回 HEAD**(`>` 截断的是同一个 inode,那次丢了约 460 行未提交改动)。正确姿势:先 `rm -f <那个文件>` 断链,再 `cp`/重定向写;验证完再 `rm` + `cp` 换回来。反过来这也是个便利:改仓库 `src/client.js` 后页面刷新即生效,不必重新 `plugin add`。
-- **绝不替用户重启他的实例**(2026-09-14 用户明确要求)。`dsh web`(默认 3080)是用户自己的工作环境:重启会打断他正在进行的回合,而且「什么时候重启」必须由他掌握。
-  - 要真机验证 → **自己起隔离实例**:独立 `DSH_HOME`(如 `/Users/kanna/sandbox/dsh-shot-home`)+ 独立端口(3099),验证完**自己杀掉**;3080 上的进程一律不碰。
-  - 宿主半改动**只提示**用户(「宿主半改了,需要你重启 `dsh web` 后生效」),不代劳重启。
-  - 万不得已动了用户的实例(动手前必须先告知):**收尾时把它杀掉**并说明当前状态,由用户自己重新敲命令启动——绝不留下一个「我们拉起来的」进程冒充他的环境。
-  - **收尾清场**:本次启动的任何 `dsh web`(隔离实例、脚本拉起的进程)一个都不留,不留占用端口的孤儿进程(`lsof -tiTCP:<port> -sTCP:LISTEN` 自查)。
-- **两道自检,覆盖面不同**:`scripts/ssr-check.mjs` 渲染的是「还没解析出仓库」的初始态——它**显式不覆盖** rail / 分支树 / 历史 / 变更这些要有数据才出现的 chrome;`scripts/layout-probe.mjs` 才是带真数据的真机渲染(它会捕获 pageerror,面板一崩就以非零码退出)。2026-09-14 的教训:`BranchRow` 里写了 `t('branches.pickHint')` 却没有 `const t = props.t`——空态根本不渲染分支行,所以 ssr-check 全绿,而真机上整个面板被 better-sidebar 的错误边界吞掉、`.dig-root` 压根不出现。**改到「有数据才出现」的代码,必须跑 layout-probe**。
-  - **探针打开面板的选择器随底座版本变**:`dsh-better-sidebar` 0.21 把侧栏卡片渲染成带 `data-sidebar-right-guide-entry="<tab id>"` 的 guide-entry 按钮,**不再渲染 title/description 文案**(旧探针里那个 `span` 文案选择器因此一个都点不到,表现为 `the Git card is not on the sidebar start page`)。现在的写法是先用 `[data-sidebar-right-guide-entry="dsh-ide-git:panel"]`,取不到再回退到旧的描述文案探测;`scripts/panes-probe.mjs` / `scripts/dock-probe.mjs` 沿用同一套。
+- 包名、host/client module 与 locale namespace：`dsh-git-panel`。
+- manifest：`dsh-external/dsh-git-panel`。
+- Cordis loader row 与 config namespace：`git-panel`。
+- API：`/dsh-git-panel/api`。
+- Better Sidebar tab：`dsh-git-panel:panel`。
+- 原生主面板、预览：`dsh-git-panel`、`dsh-git-panel-preview`。
+- conversation view：`git-panel`。
+- 浏览器存储：`dsh-git-panel.*`；CSS / DOM class prefix：`dgp-`。
 
-## 截图与演示仓库
+不得重新引入上游运行时身份。保留 LICENSE 原文与来源信息，不把上游的市场收录、GitHub 账号、npm 发布权限或本机路径当成本项目配置。
 
-- `scripts/demo-repo.mjs [dir]` 生成演示仓库(纯虚构),`scripts/screenshots.mjs <web-url> [out]` 拍 README 效果图。两者都要能重跑:演示仓库脚本是幂等的(先删后建),截图脚本假定实例已就绪。
-- **截图环境必须是干净的**:独立 `DSH_HOME`(例:`/Users/kanna/sandbox/dsh-shot-home`)、只装 `dsh-better-sidebar` 与本插件、绑定演示仓库、`ui-theme.preference: dark`。不要在真实 profile 里拍——壁纸插件、真实工作区与其它面板都会入镜。
-- **只截元素,不截窗口**:每张图都是 `.dig-root`(或其中的对话框)的元素截图,所以会话内容、文件路径与 DSH 外壳天然不会出现。
-- 主题与引导标记都写在 `DSH_HOME/settings.yaml`;**覆盖该文件会把 `ui-onboarding.welcomeNoticeVersion` 一起抹掉**,下次打开页面又会弹内测声明,挡住后续点击(截图脚本会先尝试点掉它)。
-- 面板要出现在底部工作台:会话头右侧的「展开底部面板」→ 面板 Tab 条 `+` → 卡片里的 **Git**;出现在原生右侧栏:点会话头右侧的「打开右侧边栏」→ 侧栏「开始」页里直接点 **Git** 卡片(那时没有 `+` 菜单可用)。这两个入口只在**会话真正开始之后**才存在(发一条消息即可,模型没有 key 也没关系)。
+## 开发和验证
 
-## 变更记录纪律
+- 开发与 CI 推荐 Node.js 24；Git 命令行必须可用。
+- 日常使用 `npm test`、`npm run check:syntax`、`npm run check:ssr`；打包前使用 `npm pack --dry-run`。
+- SSR 默认读取 web profile；桌面可设置 `DSH_PROFILE=desktop`，自定义用户目录可设置 `DSH_HOME`。SSR 只覆盖初始/空数据渲染，跳过不能算通过。
+- `scripts/repositories-probe.mjs` 提供项目隔离的模拟宿主验证，覆盖仓库列表状态、操作与失败路径；不能替代真实 DSH 集成验证。
+- 修改分支、变更、历史等数据态界面，必须在装有本插件的测试实例运行 `scripts/layout-probe.mjs` 或对应专项探针；探针使用显式 URL 和 `DSH_CHECKOUT`，不依赖上游开发者机器。
+- 不擅自安装插件、改用户 profile、发送消息或重启现有 DSH 实例。用户明确授权相应操作后再执行。
+- 不启动替代服务器来声称更新了用户现有 GUI。测试实例的启动与停止遵守当前会话授权和宿主环境要求。
+- 文件可能是硬链接或副本，修改安装产物前先确认真实文件关系，避免回写源码。
 
-- **所有版本发布、修复、事故复盘、复现/验证记录一律写进 `CHANGELOG.md`**,不追加进本文件;本文件只保留仍然有效的规则、不变量与当前事实。
-- 条目格式:倒序;`## vX.Y.Z — YYYY-MM-DD` + 类型(feat / fix / docs / chore)+ 要点 bullet + 相关链接。
-- 发版时:`npm version` 会经 `scripts.version` 同步 `dsh.plugin.json` 的 version(`package.json` 与 `dsh.plugin.json` 版本必须一致,冒烟测试强制)。
+## 代码约束
 
-## 目录地图
+1. 当前无构建步骤。客户端保留 `window.__ModuleLoader__.load({ id, factory })` 包装，不新增第二个 client entry。需要模块化或构建链时先设计明确迁移方案和产物验证。
+2. 宿主使用 Node 内置 API。当前仅有 host 提供的 `@deepseek-ai/schemastery` 动态可选加载，缺失时允许降级。
+3. Git 永远使用 argv 数组；禁止 shell 命令拼接、`exec` 或 `shell: true`。新参数走现有 ref/path 校验。
+4. 写操作必须登记到 `WRITE_METHODS` 并通过队列。`rebaseAbort` 已登记；队列按 Git checkout 根路径与实际文件系统路径规范化，linked worktree 保持独立。不要把原始路径字符串视为仓库唯一身份；撤回存储等场景仍需逐项统一身份。
+5. 保留破坏性操作的 confirm 守卫、撤回句柄及冲突检查。未经正确快照不能宣称可撤回。
+6. 新路由遵循现有 method 和 trust 校验；现有 loopback/Fetch Metadata 检查不能替代宿主鉴权或工作区授权。完善请求与会话仓库范围绑定是后续任务。
+7. Better Sidebar 与原生主侧栏注册互斥，后者必须有 guide 入口；主对话区座位独立，遵循实时配置开关。注册要有 effect cleanup，避免热加载/禁用后残留。
+8. 宿主不访问客户端侧栏服务。客户端对可选服务和平台 UI primitives 做能力探测。
+9. 布局通过容器宽度测量；高度仅区分 columns/stack，不能独立触发 compact。
+10. hooks 依赖数组引用的 const 必须先声明。词典的 `t` 必须是函数，新增键要补齐全部语言并跑键集测试。
+11. 浮层在面板内 absolute 定位，坐标相对根容器，避免 layout containment 导致错误。
+12. `RAIL_SPECS` 是动作条权威；配置通过归一化读写。按仓库隔离状态时兼顾工作区、session 与过期请求。
+13. package 和 manifest 的版本必须一致，files 列出的产物必须存在。
+14. 安装声明只通过包自带的 bundle patch 与 `dsh.profile.bundles`，不在 profile 手写重复 insert。
 
-| 路径 | 作用 |
-|---|---|
-| src/index.js | **宿主半**:`/dsh-ide-git/api` 前缀路由 + git 方法表(argv-only spawn)、参数校验、信任围栏、confirm 守卫 |
-| src/client.js | **客户端半(全部 UI)**:`window.__ModuleLoader__.load` 包装;注册 better-sidebar Tab;Panel 组件含分支树 / 图谱 / 变更 / 详情 / 历史筛选 / 可配置动作条 / 右键菜单 / 弹窗 / 撤回浮窗 / 样式 |
-| cordis.patch.yml | dsh plugin add 官方安装通道的挂载声明(insert 一行 `ide-git`) |
-| dsh.plugin.json | 插件注册表清单(id `dsh-external/dsh-ide-git`) |
-| tests/smoke.mjs | 文件级冒烟测试(无 Cordis runtime、无浏览器):清单一致性 / 客户端包装 / 基线 require 白名单 / 破坏性守卫 / 写队列与撤回 / 方法表一致性 |
-| tests/api.test.mjs | 集成测试:临时真实仓库 + 伪造 cordis ctx 与 HTTP req/res,直驱宿主路由(解析 / 变更 / 全部守卫) |
-| docs/screenshots/ | README 效果图(6 张,由 scripts/screenshots.mjs 生成) |
-| scripts/demo-repo.mjs | 生成用于截图的虚构演示仓库(幂等) |
-| scripts/screenshots.mjs | Playwright 驱动的截图流程(只截插件面板元素) |
-| scripts/ssr-check.mjs | 客户端半的 SSR 自检(真渲染一次 Tab 组件) |
-| scripts/conversation-probe.mjs | 主对话区 Git 标签页的回归探针(10 项断言:注册/挂载/真数据/开关翻转/`/remote` 回退/零 pageerror);要求隔离实例 + `DIG_PROBE_WORKSPACE` 指名的工作区(默认「演示仓库」) |
+## 文档与发布
 
-## 核心不变量(改代码前必读)
+变更和验证结果写入 [CHANGELOG.md](CHANGELOG.md)，格式为 `## vX.Y.Z — YYYY-MM-DD`。下方上游历史保持来源标注，不重写成自身发布记录。
 
-1. **无构建、单文件客户端**。`src/client.js` 必须保持 `window.__ModuleLoader__.load({ id, factory })` 包装;只能 require DSH 客户端基线模块(当前仅 `react`),冒烟测试用白名单强制执行。禁止 `import`、禁止新增第二个 client entry。
-2. **宿主半只 import `node:` 内置模块**(当前:`node:child_process` 的 `spawn`、`node:path`)。冒烟测试强制。
-3. **git 调用永远是 argv 数组**:`spawn(gitBinary(), args, { cwd })`,禁止 `exec` / `shell: true` / 字符串拼接命令;用户输入先过 `requireAbsolute` / `requireRef`(不以 `-` 开头、无空白与控制字符)/ `requireRelativePath`(不越出仓库)。新增方法必须走同一套校验。
-4. **破坏性操作必须 `confirm: true`**:push、`reset --hard`、`branch -D`、丢弃未跟踪文件(`clean`)、`stash drop`。UI 侧对应动作一律先弹 ConfirmDialog。**唯一例外是「提交并推送」按钮**(v0.3.7):按钮文案已经把「会推送」写在脸上,点击即视为确认,不再二次弹框——它仍然把 `confirm: true` 传给宿主,所以守卫没有被绕过。冒烟测试校验这些守卫字符串存在。
-5. **两条信任围栏**:宿主路由只服务 loopback Host 或 `Sec-Fetch-Site: same-origin/same-site` 的请求;任何新路由都必须先过 `isTrusted(req)`,再检查 method 为 POST。
-6. **注册是两条通道,互斥,自动选**(v0.4.0 起)。客户端半按宿主决定挂哪儿,返回值的 `inject` 是 `[]`——底座是**可选** peer,不是硬依赖:
-   - **有 dsh-better-sidebar** → `ctx.inject(['betterSidebar'], (tabCtx) => tabCtx.effect(() => betterSidebar.registerTab({ … })))`。注册必须包在 `effect` 里(否则 HMR/禁用后残留注册,再次激活抛 already registered);`id` 用 `dsh-ide-git:panel`(单例 `single: true`);标题/描述用函数形式以跟随语言切换。
-   - **没有它** → DSH **原生右侧栏**座位:`ctx.sidebarRightTabs.register({ id: 'dsh-ide-git', kind: 'ide-git', title, guide: [胶囊] })` 加上 keyed slot `sidebar.right.pane.tab`(键同 id)。`guide` **至少要有一项**——原生右侧栏里 guide 胶囊是打开一个 page 类型的唯一入口,没有它 tab 注册了也进不去。
-   - 两条通道**永不并存**:原生注册留着 disposer,晚到的 better-sidebar 会先撤掉它再接管(`hostedByBetterSidebar`)。
-   - 原生座位不给 cwd:`NativePanel` 从 `useWorkspaces(state => state.items)` 里找 **sessionIds 含当前会话**的 workspace,取它的 `path`——与底座通道的 `scope.cwd` 同源。
-   - **第三座位(独立于上两条,v0.13.0 起,issue #8):主对话区 `conversation.view` 槽**(ui-conversation 的 tab 环,「对话/轨迹」那一排;契约与 dsh-context 相同)。默认注册、由 row Config 字段 `conversationTab`(default true)经 `subscribeRailConfig` **实时**注册/注销;`ConversationPanel` 的 cwd 取 `ctx.get('sessions')` 的 `session.byId[sessionId].cwd`(带 subscribe 跟随)。`dsh.client.inject` 里声明了 `@deepseek-ai/dsh-client-ui-conversation`。回回归:`scripts/conversation-probe.mjs`(含开关翻转与 `/remote` 回退,10 项断言)。
-7. **布局用测量而不是猜测,而且宽度说了算**。`TabComponentProps` 不携带「我在右栏还是底部面板」的信息,所以只看容器尺寸:`compact`(**宽度 < 400** → 单行头部 + 变更/历史分段,即窄栏 chrome);否则 `width >= 600 且 width >= height * 1.15` → `columns`(三栏);其余 → `stack`(纵向)。**高度没有否决权**:它只参与 `columns` / `stack` 的区分,**绝不能单独触发 `compact`**——v0.1.3 用 `height < 330` 判紧凑,把 1500x300 的底部工作台判成了单栏;v0.3.5 仍留着 `height < 200`,于是 1320x180 的底部面板一拉矮就整块翻成右栏样式(用户报告,v0.3.6 修掉)。回归验证用 `scripts/layout-probe.mjs`(驱动干净实例把面板从 480 拉到 90px,逐档记录实际 chrome 并截图)。不要引入「按面板类型」的分支,也不要硬编码高度。
-8. **服务只在 client 半**。宿主半既没有 `ctx.betterSidebar` 也没有 `sidebarRightTabs`;宿主侧要读侧栏状态只能走它自己的 `/sidebar/*` 路由。宿主半不依赖任何插件;客户端半用 `ctx.get()` **探测**两个宿主服务,一个都没有时只挂样式、什么都不注册,绝不抛错。
-9. **版本两处一致**:`package.json` 与 `dsh.plugin.json` 的 version 必须相同(冒烟测试强制);`files[]` 里列出的每个文件都必须真实存在。
+README 使用标题、语言切换、简介的顺序。尚未收录本项目时不挂市场收录徽章；保留的上游截图明确标为上游示例。
 
-10. **客户端半的 `t` 必须是函数,词典按语言分条**(v0.5.0 起)。中文与英文是文件内的 `ZH` / `EN`,其余语言在 `LOCALES` 表里一门一条、每条前有一行 `/* locale: <tag> */` 标记,查找走表驱动的 `dictionaryFor()`(精确 tag → 主语言子标签 → 英文,`zh-Hant-*` 归港式繁体)。文案入口必须是 `const t = (key) => …` 查表函数——2026-09-14 真机首屏崩(`dsh-better-sidebar: t is not a function`)就是把它写成了词典本身,better-sidebar 的错误边界会整页降级。**加文案键时:ZH / EN 一起加,再给 `LOCALES` 里每一门语言都加**——冒烟测试逐门比对键集,缺一个就红(缺键不报错,只静默回退英文,面板会变成半翻译状态)。加一门语言 = 在 `LOCALES` 追加一个带标记的条目再跑测试,不改任何逻辑。词典同时经 `ctx.locale.register(LOCALE_NS, …)` 发布给 DSH。
-11. **挂载只走 `dsh.profile.bundles`**。包自带 `dsh.bundle.patch`(`cordis.patch.yml`),DSH 组合顺序是「各 bundle 层 → profile 自己的 patch 层」;再在 profile 的 `cordis.patch.yml` 手写一条 insert 就会得到两行同 id,插件更新流程会以 `duplicate loader entry id` 失败并回滚。本机联调改 profile 时:把包名加进 `dsh.profile.bundles`(并让依赖指向本地 tarball),**不要**手写 insert 行;可用 `app-boot` 的 `loadProfile` + `composeEntries` 离线校验组合里恰好一行。
+本项目尚无自己的远程地址与 npm 发布配置。发布工作流仅手动触发；设置 Trusted Publisher 与发布包名后，发布行为仍需用户明确授权。
 
-12. **hooks 依赖数组在渲染期求值**。useCallback / useMemo / useEffect 的依赖数组当帧就会求值,引用「后面才声明的 const」直接 TDZ 报错(v0.1.6 就因此崩过一次:branchMenu 的依赖里写了定义在 rail 段的 toggleFavoriteBranch)。规则:被 hooks 依赖引用的函数与值必须先声明;派生值同理。SSR 自检(react-dom/server 真渲染一次 Tab 组件)能抓出这类错误,改完客户端半务必跑一遍。
-
-13. **面板内的浮层一律用「面板内定位」**。`dsh-better-sidebar` 的底部工作台声明了 `contain: layout style`,布局包含使它成为 `position: fixed` 后代的**包含块**——用视口坐标 + `position: fixed` 的浮层会被摆到面板之外(屏幕外),真机上表现为「右键点了没反应」。规则:菜单 / 遮罩 / 对话框都是 `.dig-root`(`position: relative`)内的 `position: absolute`;锚点先减去 `hostRef` 的 `getBoundingClientRect()`(见 `openMenuAt`),再按面板盒子夹取;浮层自带 `max-height` + 内部滚动,放不下时向上翻而不是溢出。
-14. **动作条是用户可配置的,`RAIL_SPECS` 是唯一权威**。增删动作只改 `RAIL_SPECS`;持久化(`dsh-ide-git.rail.v1`)只存「排列 + 隐藏」,读写一律过 `normalizeRail()`(丢弃未知 id、补齐缺失 id),所以新增动作不会让旧配置失效。设置按钮由 rail 自己追加、不参与配置;容量按 rail **自身**尺寸算(竖排看高度、横排看宽度),放不下才出现 `⋯ 更多`,而「更多」必须列出全部动作。
-
-15. **删除 / 覆盖类方法必须留下撤回句柄**。删除记对象 id(`pushUndo()`),覆盖工作区内容记**文件字节快照**(`snapshotForUndo()` 在动手前读、`snapshotState()` 记下操作后的样子),响应里统一返回 `undo: { id, kind, label }`;撤回逻辑集中在 `undoApply` 里按 `kind` 分支,不要另开方法。**快照不成立时不许假装能撤回**:符号链接 / 特殊文件 / 超过 `UNDO_MAX_FILES`(400)或 `UNDO_MAX_SNAPSHOT_BYTES`(4 MB)时返回 `undoBlocked: true` 而**不返回** `undo`,客户端如实提示「未保留撤回」。写回前必须逐个比对目标是否仍是操作后的样子(内容 sha1),有一个不一致就返回 `undo-conflict` 并且**一个文件都不写**。撤回是**一次性**的:成功后必须把数组写回(`undoStacks.set(root, list)`)——`undoEntriesOf()` 返回的是 `filter` 出来的新数组,v0.3.0 就因此漏过写回,导致同一个句柄重放时走到 `undo-conflict` 而不是 `undo-gone`。句柄有 TTL 与条数上限。
-16. **会改仓库的方法必须登记进 `WRITE_METHODS`**。路由按这个 Set 把写请求放进 per-repo 队列(`withRepoLock`),漏登记就等于重新打开并发写窗口;只读方法不要加进去,否则白白排队。
-
-## 文档规范
-
-- **README 顶部顺序:标题 → 收录徽章 → 中英互切链接 → 简介引用块**,语言切换照生态惯例写:`简体中文 | [English](README_EN.md)`(英文页 `[简体中文](README.md) | English`)。
-- **收录徽章可以挂**(2026-09-23 起 awesome-dsh-plugin 已收录本插件,收录 PR 已合并):两份 README 标题下挂官方 badge,与 `dsh-better-workspace` 同款:`[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)`。历史教训仍然有效:**未收录时挂徽章 = 虚假宣称**(v0.3.2 加过、v0.3.4 撤掉,用户明确纠正过),所以收录状态变化时同步更新本条。写法备注:`badge.svg` 内部用 `<text>` 定位、依赖 Verdana 字宽,若真机渲染挤压可换 shields.io 写法(服务端按固定字体算宽度;v0.3.3 曾因此换过一次)。
-- 效果图走 `docs/screenshots/`,中文页与英文页引用同一批文件,配图段落用「左图右说明」的两列表格(见 `## 效果` / `## Screenshots`)。
-
-## 宿主演进跟随(dsh 升级时必查)
-
-- **Git 预览的 LineDiff(v0.14.3)是 ui-deliverables 审视图(ReviewTab + FileDiff)的逐文件移植**:头部(官方 Menu/PathLabel/Tooltip/图标,均来自 seed)、unified 双列行号、split 双列同步滚动、双侧 Shiki 高亮、± 统计、单边强制单列、5000 行截断——布局与状态层写在 `src/client.js`,其余积木(`useCodeHighlighter`、`languageForPath`、file-diff alias token、Menu/Tooltip/图标)全部来自平台 seed 表。配色自动跟随主题,**布局与功能不会**。
-- **机制事实(2026-10-08 实证,修正早前结论)**:boot 图行的包**可以**被插件 client bundle require(modules/manifest.ts 解析契约;真机实测 `require('@deepseek-ai/dsh-client-ui-deliverables')` 返回 `{apply, inject}` 不抛错);拿不到 FileDiff 仅因其入口未导出组件——官方一旦 re-export(讨论 #9148),LineDiff 整块删除换官方组件。
-- **每次更新插件版本、以及 dsh 升级时,都主动查一遍「官方是否开放了整个预览模块」**(讨论 #9148:https://github.com/deepseek-ai/deepseek-harness/discussions/9148 )。两个落地形态,任一出现即整体切换:
-  1. `ui-primitives` 把行号 diff 渲染提升为 seed 组件(查 `packages/client/ui-primitives/src/index.ts` 导出);
-  2. `ui-deliverables` 的 client 入口 re-export `FileDiff` / `hunkRows` / `splitRows`(查 `packages/client/ui-deliverables/src/client/index.ts` 的导出——机制已实证可行,boot 图行可 require,只差这一行导出)。
-  一旦落地:**整体删除 LineDiff 换官方组件**,本节随之作废。
-- **dsh 升级版本时,按序检查三件事**:
-  1. `packages/client/ui-deliverables/src/client/FileDiff.tsx` 是否演进(新增 hunk 折叠、词级 intra-line 高亮等)→ 有需要的就把能力同步进 LineDiff;
-  2. `FileDiff.module.css` / `ReviewTab.module.css` 与 file-diff alias token 是否更名/增删 → 同步 CSS 里的 token 名与结构;
-  3. 上面的「官方开放预览模块」检查。
-- 原则:不要往 LineDiff 里堆功能(折叠、词级高亮这类先等官方);它是通往官方组件的桥接,不是自研方向。
-
-## 与 dsh-better-sidebar 生态的关系
-
-- 插件要进 better-sidebar 设置页的「侧边卡片」分区/推荐目录,靠的是:注册 Tab 时提供 `title` / `description` / `icon`(卡片自动生成),以及仓库打好 `dsh-better-sidebar` topic。推荐目录本身维护在 better-sidebar 仓库的 `src/client/plugins-tabs.ts`,收录需要向该仓库提 PR。
-- **底座不是前置**:没装它时本插件走 DSH 原生右侧栏(见不变量 6)。底座崩了/还没修好,用户仍能用原生通道,这也是 v0.4.0 的出发点。
-- 本插件与内置 `git` Tab(「文件变动」)是互补关系:内置管暂存/提交/还原/历史,本插件管分支树、图谱、提交详情与更全的分支/提交操作。
+DSH 升级时检查平台是否已经导出可复用的完整 diff 组件；可用后优先复用官方组件，避免继续扩展临时 LineDiff。检查主题 alias token 和宿主注册协议是否发生变化。
