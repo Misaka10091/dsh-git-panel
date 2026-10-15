@@ -4,7 +4,7 @@
 
 > A Git panel for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), derived from [KannaKuron/dsh-ide-git](https://github.com/KannaKuron/dsh-ide-git). It opens a collapsible repository list similar to VS Code Source Control, with the full Git workbench retained.
 
-Current version: **0.1.0**. Upstream baseline: **dsh-ide-git 0.18.2**, commit `b4e4b5a176de7da9060d1225d9ed027a8df8472c`. See [UPSTREAM.md](UPSTREAM.md) for attribution and update instructions.
+Current version: **0.1.1**. Upstream baseline: **dsh-ide-git 0.18.2**, commit `b4e4b5a176de7da9060d1225d9ed027a8df8472c`. See [UPSTREAM.md](UPSTREAM.md) for attribution and update instructions.
 
 ## Current state
 
@@ -44,20 +44,30 @@ Run `node scripts/repositories-probe.mjs --prepare`, execute its printed esbuild
 
 Full mode covers independent drafts and folding, target roots and busy states, workbench roundtrip, cross-repository diff, failed commit retry, push partial success, discard undo warnings, failed writes interleaved with stale summaries, stale workspace responses and overflow. **This does not validate the real DSH host.** AGENTS.md still requires an installed-plugin test instance with explicit URL and `DSH_CHECKOUT` for integration probes. Installation into the current desktop profile was authorized and completed: live repository discovery and nested-repository summary succeed. The unborn-repository fix is installed and all 58 API/repository tests pass, but the running host still caches the previous module and needs a restart. The isolated browser has no authenticated session for the current GUI, so live page data-state verification remains pending.
 
-## Local installation
+## Installation
 
-The fork has not been published to npm. From the project directory:
+The npm package is `@misaka10091/dsh-git-panel`. Once its first npm publication is complete:
+
+```sh
+dsh plugin --profile desktop add @misaka10091/dsh-git-panel
+```
+
+Before publication, pack and install from the project directory:
 
 ```sh
 npm pack
-dsh plugin --profile desktop add file:./dsh-git-panel-0.1.0.tgz
+dsh plugin --profile desktop add file:./misaka10091-dsh-git-panel-0.1.1.tgz
 ```
 
-Host changes require restarting DSH; client changes require reloading the page. Project initialization does not install the plugin or restart an instance.
+Host changes require restarting DSH; client changes require reloading the page. Migration from the unscoped package requires handling the old bundle and any package-name assertions in profile patches while preserving desired configuration. See [release and migration instructions](docs/RELEASING.md).
+
+## Automated releases
+
+Pushing a `vX.Y.Z` tag triggers validation, tests, packing, npm publication, then a GitHub Release with the same `.tgz` attached. Prereleases use npm `next` and GitHub Pre-release. Manual dispatch accepts an existing version tag to recover a failed release. First publication and npm Trusted Publisher setup are documented in [release instructions](docs/RELEASING.md).
 
 ## Identity
 
-The package, host, client module and locale namespace are `dsh-git-panel`; the manifest ID is `dsh-external/dsh-git-panel`. The Cordis row and config namespace are `git-panel`, the API prefix is `/dsh-git-panel/api`, and the Better Sidebar tab is `dsh-git-panel:panel`.
+The npm package, Cordis module specifier, client ModuleLoader ID and bundle settings key are `@misaka10091/dsh-git-panel`. Host/client plugin export names and the locale namespace remain `dsh-git-panel`; the manifest ID is `dsh-external/dsh-git-panel`. The Cordis row and config namespace are `git-panel`, the API prefix is `/dsh-git-panel/api`, and the Better Sidebar tab is `dsh-git-panel:panel`.
 
 Native main and preview IDs are `dsh-git-panel` and `dsh-git-panel-preview`; the conversation view ID is `git-panel`. Browser storage uses `dsh-git-panel.*`, and CSS/DOM classes use `dgp-`. These identities are separate from the upstream plugin.
 
@@ -76,4 +86,4 @@ Screenshots in `docs/screenshots/` are preserved upstream examples, not newly ve
 
 ## License
 
-[MIT](LICENSE), retaining `Copyright (c) 2026 KannaKuron`. Upstream marketplace inclusion and publication credentials do not transfer to this fork. Own repository and publication metadata will be added when those destinations are established.
+[MIT](LICENSE), retaining `Copyright (c) 2026 KannaKuron`. The repository is [Misaka10091/dsh-git-panel](https://github.com/Misaka10091/dsh-git-panel) and the npm package is `@misaka10091/dsh-git-panel`. Upstream marketplace inclusion and publication credentials do not transfer to this fork.

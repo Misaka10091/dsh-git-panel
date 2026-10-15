@@ -17,7 +17,7 @@
  * exactly like better-sidebar's own panels do.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-git-panel',
+  id: '@misaka10091/dsh-git-panel',
   factory: (require) => {
     const React = require('react')
     const E = React.createElement
@@ -57,9 +57,10 @@ window.__ModuleLoader__.load({
        would escape the mount and 404 behind any strict proxy. */
     const API_BASE = 'dsh-git-panel/api'
     const TAB_ID = 'dsh-git-panel:panel'
-    /* The bundle's package name: the key the Plugins page uses for a bundle's own
-       page and its `plugins.bundle.config` slot. */
-    const SETTINGS_BUNDLE = 'dsh-git-panel'
+    /* The package name keys the Plugins page and its bundle config slot.
+       ModuleLoader registration and the host loader specifier also use it.
+       Row configuration still belongs to RAIL_NS ('git-panel'). */
+    const SETTINGS_BUNDLE = '@misaka10091/dsh-git-panel'
     /* The namespace this plugin's dictionaries are published under in the DSH
        locale registry. */
     const LOCALE_NS = 'dsh-git-panel'

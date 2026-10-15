@@ -38,7 +38,7 @@ const BASELINE = new Set([
 test('release bookkeeping: package.json and dsh.plugin.json agree', () => {
   assert.equal(manifest.version, pkg.version)
   assert.equal(manifest.main, './' + pkg.main)
-  assert.equal(pkg.name, 'dsh-git-panel')
+  assert.equal(pkg.name, '@misaka10091/dsh-git-panel')
   assert.match(manifest.id, /^dsh-external\//)
   assert.equal(pkg.license, 'MIT')
   assert.ok(exists('LICENSE'))
@@ -121,18 +121,18 @@ test('the dsh peer survives the runtime compatibility check', () => {
   assert.equal(pkg.peerDependenciesMeta?.['@deepseek-ai/dsh']?.optional, true)
 })
 
-test('cordis patch mounts exactly one row named dsh-git-panel', () => {
+test('cordis patch mounts exactly one row resolving the scoped package', () => {
   // Commented-out examples must not count: only live YAML lines are the mount.
   const active = patch.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n')
   assert.match(active, /- insert:/)
   const names = active.match(/name: '([^']+)'/g) || []
-  assert.deepEqual(names, ["name: 'dsh-git-panel'"])
+  assert.deepEqual(names, [`name: '${pkg.name}'`])
   assert.match(active, /id: git-panel/)
 })
 
 test('client half uses the no-build ModuleLoader wrapper', () => {
   assert.match(client, /window\.__ModuleLoader__\.load\(\{/)
-  assert.match(client, /id: 'dsh-git-panel'/)
+  assert.ok(client.includes(`id: '${pkg.name}'`), 'ModuleLoader must register the package name requested by the boot graph')
   assert.match(client, /factory: \(require\) =>/)
   assert.doesNotMatch(client, /^\s*import\s/m, 'client half must not use import')
   assert.doesNotMatch(client, /\bexport\s+(default\s+)?(const|function|class)\b/)
@@ -1548,7 +1548,7 @@ test('the rail settings live in the row Config, with localStorage only as the le
 
   // Client wiring: the detail-page seat (the legacy Settings → Plugins seat went
   // away with the raised host floor), soft services, one-shot migration.
-  assert.match(client, /const SETTINGS_BUNDLE = 'dsh-git-panel'/)
+  assert.match(client, /const SETTINGS_BUNDLE = '@misaka10091\/dsh-git-panel'/)
   assert.match(client, /const RAIL_NS = 'git-panel'/)
   assert.match(client, /slots\.inject\('plugins\.bundle\.config'/)
   assert.match(client, /\{ name: 'plugins\.bundle\.config', key: SETTINGS_BUNDLE, locale: LOCALE_NS \}/)

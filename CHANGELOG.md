@@ -1,15 +1,57 @@
 # Changelog — dsh-git-panel
 
-## v0.1.3 — 2026-10-14
+## v0.1.1 — 2026-10-14
+
+**类型**：docs / chore（发布文档与 Trusted Publisher 验证准备）
+
+- 补齐 npm 手动首发所需的双因素认证步骤，以及 staged publishing 的暂存、维护者批准和 `0.0.0-stage` 占位版本说明。
+- 说明 Trusted Publisher 的直接发布权限、Pending validation 状态及首次工作流验证方式；后续正式版本通过标签工作流发布，成功后创建 GitHub Release 并附同一安装包。
+- 首次公开版本仍为 `0.1.0`，已确认 npm `latest` 指向该版本；首发前本地迭代保留为未发布开发历史。
+- 本补丁的运行时代码、语言包和 bundle 配置与 npm 上的 `0.1.0` 一致；本地首发 tarball 的 SHA-512 integrity 已与 registry 核对。
+- **验证**：完整测试 128/128、源码语法、隔离 profile 的 SSR 4/4 均通过；工作流 YAML 与 8 个 Bash 步骤语法通过；`v0.1.1` 版本/清单/changelog 校验及 `npm pack --dry-run` 通过。
+- **发布状态**：本地准备阶段，尚未推送 `v0.1.1` 标签或执行该版本线上发布；GitHub Actions/OIDC 链路待实际运行验证。
+
+## v0.1.0 — 2026-10-14
+
+**类型**：feat / fix / perf / chore（首次公开发布）
+
+- 基于 dsh-ide-git 0.18.2 建立独立 Git 面板，保留 MIT 许可证与上游来源；公开 npm 包为 `@misaka10091/dsh-git-panel`。
+- 默认可折叠的逐仓库状态列表，支持暂存、取消暂存、提交、提交并推送、diff 预览及确认丢弃；保留完整分支、图谱、历史和工作台，并隔离逐仓库草稿、忙碌状态与过期请求。
+- 改善仓库发现、摘要和首屏加载；提供列表状态本地缓存、扫描并发设置、可配置状态轮询与唤醒刷新。
+- 重新设计插件设置卡，分区默认折叠，补齐插件标题、状态说明与多语言词典；保留 `git-panel` 配置行及原有运行时身份。
+- scoped 包的宿主模块路径、客户端 ModuleLoader ID 和 bundle 设置 key 同步；补齐中英文安装及旧本地包迁移说明。
+- 版本标签工作流按校验、测试、打包、npm 发布、GitHub Release 顺序执行；Release 附同一安装包。支持预发布与按 tarball integrity 恢复失败发布。
+- **版本说明**：`0.1.0` 是首次公开发布版本；下方 `0.1.0` 至 `0.1.4` 编号仅用于首发前本地开发和安装联调，从未发布到 npm，功能全部包含在本次首发准备中。
+- **验证**：功能完整测试 128/128，源码语法与 SSR 4/4 通过；工作流 YAML、触发/权限/顺序和 8 个 Bash 步骤语法通过。版本修正后重新校验发布说明、包/清单一致性并打包。
+- **发布状态**：已由维护者完成 npm 首发，registry 已确认 `0.1.0` 公开且 `latest` 指向该版本；首发 tarball integrity 与本地安装包一致。该版本未通过 GitHub Actions 发布，不代表 Trusted Publisher 已验证。
+
+## 首发前本地开发记录（未发布到 npm）
+
+以下保留开发时使用的版本编号、安装状态及当时的验证边界，均不是公开发版记录。
+
+### 本地迭代 0.1.4 — 2026-10-14
+
+**类型**：chore（npm scope 迁移与标签自动发布）
+
+- **npm 包名**改为 `@misaka10091/dsh-git-panel`，避免与 registry 上已存在的 unscoped 同名包冲突；发布账号需拥有对应 npm scope 权限。补充本项目 repository、homepage 和 issues 元数据。
+- **安装与客户端加载**：Cordis bundle patch 的模块路径、客户端 `__ModuleLoader__.load` ID、插件设置页 bundle key 同步使用 scoped 包名。修复只改 package.json 时可能找不到模块或加载旧包的问题。
+- **保留插件身份与配置行**：host/client 插件导出名、locale namespace、API `/dsh-git-panel/api`、Better Sidebar tab、浏览器存储和 CSS 前缀保持原值；row ID/config namespace 仍为 `git-panel`。包名变化本身不要求重置动作条、放置和列表配置；旧 profile 的插件名断言需在迁移时更新，详见 `docs/RELEASING.md`。
+- **标签自动发布**：推送 `vX.Y.Z` 后，校验 tag/package/manifest 版本、仓库身份和 changelog → 语法与测试检查 → 打包 → 通过 npm Trusted Publisher 发布 → 创建 GitHub Release 并附同一 `.tgz`；保留填写已有 tag 的手动恢复入口。
+- **预发布与重跑**：预发布标签使用 npm `next` 和 GitHub Pre-release；正式版使用 `latest`。重跑时已有 npm 版本必须与当前 tarball 的 integrity 一致，才允许跳过发布并继续补建 Release；不同内容必须增加版本号。
+- **文档**：同步中英文安装命令与身份说明，补充 npm 首发、Trusted Publisher 配置和发版操作说明。
+- **验证**：`npm test` **128/128**（含 5 项发布保护测试）；host/client 语法通过；SSR **4/4**（项目隔离 profile）；工作流 YAML、触发/权限/顺序和 8 个 Bash 步骤语法通过；npm 实际打包成功。
+- **边界**：未安装 scoped 0.1.4 到用户 profile，未创建或推送标签，未执行 npm 发布或真实 GitHub Actions/OIDC 发布；这些本地检查不等于线上发版验证。
+
+### 本地迭代 0.1.3 — 2026-10-14
 
 **类型**：ui / chore（插件列表身份与设置卡重设计）
 
 - **插件列表身份去上游化**：`locale/zh.json` + `en.json` 的 `meta.title/description` 仍是上游 dsh-ide-git 的「Git 工具窗口 / IDE 风格的……」——插件列表里 fork 与上游两行完全同名同描述无法区分。现改为本项目身份「Git 面板 / Git Panel」，描述改为本项目特性概述并保留 dsh-ide-git 二开署名；设置卡标题 ×21 词典同步改为「Git 面板设置」系。
 - **设置卡重设计**（参照 dsh-web-search-free 的卡片语言，全部走 `--dsw-alias-*` token）：布尔开关的 checkbox 以 `appearance:none` 画成 36×20 胶囊开关（`corner-shape:round` 配对 999px 圆角，键盘 focus 环与禁用态保留）——**仍是真实 `<input type=checkbox>`**，探针、乐观写入与无障碍语义不变；placement/list 开关行升级为独立卡片（标题行 + **状态反映副行**：新键 `settings.state.on/off` ×21，如「已开启：进面板立即显示上次保存的仓库列表状态」）；select/text 行同卡片化；动作条 16 开关从带边框滚动列表改为**响应式两列网格**（宽页两列、窄面板单列）；分区折叠改为无框分组（消除框中框）。
 - 验证：`npm test` **123/123**（新增断言：state 键 ×21 词典、状态前缀拼接、胶囊开关 CSS、卡片字段、网格布局、locale meta 身份 + 署名保留）；途中两次被仓库既有的设计 token 纪律测试拦下（半径必须 `--dsw-radius-*` token、999px 必须配 `corner-shape:round`）——均已按规范修正，这正是这些测试存在的意义。
-- 验证（实机）：设置卡探针重跑见下轮记录；v0.1.3 安装后需重启宿主加载。
+- 验证（实机）：v0.1.3 设置卡探针 **12/12**，已安装到 desktop profile 并重启加载；该结果不代表后续 scoped 0.1.4 的安装验证。
 
-## v0.1.2 — 2026-10-14
+### 本地迭代 0.1.2 — 2026-10-14
 
 **类型**：feat（仓库状态自动更新策略，可配置）
 
@@ -20,7 +62,7 @@
 - 验证：`npm test` **123/123**（新增策略测试：host schema 默认值、钳制边界、隐藏文档跳过、唤醒经既有 refreshTick、订阅实时生效、无裸常量、discovery 唯一调用点 + deps 钉死；6 键 × 21 词典键集）；host/client 语法通过；SSR 4/4（项目隔离 profile）；隔离 Chrome 仓库探针 `--full` 通过（含 1440/360/320/1100 四档截图）；**设置卡探针首次对真实宿主全绿**——12 项断言含 18 开关 55ms burst 写入与重载存活、80ms 双击归零、零页面错误，并验证探针自身升级（playwright 走 `.local/browser-fixture` 兜底、复选框按完整 id 寻址三个前缀分区、跑完恢复全部开关初值、openCard 适配 v0.1.0+ 默认仓库视图：先经行内 workbench 动作进工作台再开设置）。
 - 边界：真实 GUI 数据态验证仍受独立浏览器登录会话限制。v0.1.2 已打包并安装到 desktop profile（依赖 `file:D:/workspace/github/dsh-git-panel/.local/install/dsh-git-panel-0.1.2.tgz`），宿主重启后加载；web profile 亦装同版本（含 dsh-better-sidebar@0.25.0）用于设置卡探针的临时实例验证。
 
-## v0.1.1 — 2026-10-14
+### 本地迭代 0.1.1 — 2026-10-14
 
 **类型**：perf / feat（仓库列表并行定标与行状态本地缓存）
 
@@ -31,7 +73,7 @@
 - 验证：`npm test` **122/122**（新增行缓存块直驱：读写回环、畸形/部分载荷拒绝、LRU 淘汰、冷态种子与开关门控、池宽读取断言；host schema 两字段默认值断言）；host/client 语法通过；SSR 4/4（项目隔离 profile，`DSH_HOME=.local/ssr`）；隔离 Chrome 的仓库探针 `--full` 通过（真实客户端 + 模拟宿主，含 1440/360/320/1100 四档无横向溢出截图）。
 - 边界：`scripts/settings-card-probe.mjs` 需要带 token 的运行实例 URL，本轮未跑——设置卡第四节由冒烟源码断言与 21 词典键集测试覆盖，实机交互待授权后验证。真实 GUI 数据态验证仍受独立浏览器登录会话限制。v0.1.1 尚未打包安装，运行中的 GUI 仍是 v0.1.0。
 
-## v0.1.0 — 2026-10-14
+### 本地迭代 0.1.0 — 2026-10-14
 
 **类型**：perf / fix（状态与历史加载）
 
@@ -44,7 +86,7 @@
 - 当前记录的性能验证直接调用真实宿主 handler，客户端专项探针使用真实客户端与模拟宿主；均不能替代现有 GUI 的数据态验证。新版本尚未安装到当前 profile，运行中的 GUI 尚未更新。
 - 本机安装联调（2026-10-14，经用户授权）：先 `dsh plugin --profile desktop remove dsh-git-panel` 清理指向已删除 tarball 的旧依赖，再通过官方 `dsh plugin --profile desktop add file:.local/install/dsh-git-panel-0.1.0.tgz` 安装到当前桌面 profile；`dsh.profile.bundles` 声明未变，安装产物 `src/index.js`、`src/client.js` 与源码 SHA256 一致。安装源 tarball 位于 `.local/install/`（git 忽略），profile 依赖按 file: 引用它，删除该文件会破坏后续依赖解析。运行中的宿主需重启加载新模块。
 
-## v0.1.0 — 2026-10-13
+### 本地迭代 0.1.0 — 2026-10-13
 
 **类型**：feat / fix / chore / docs（独立项目与 Git 仓库列表）
 

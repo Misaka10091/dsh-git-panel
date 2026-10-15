@@ -8,9 +8,9 @@
 
 ## 项目身份
 
-- 包名、host/client module 与 locale namespace：`dsh-git-panel`。
+- npm 包名：`@misaka10091/dsh-git-panel`；host 导出名与 locale namespace：`dsh-git-panel`。
+- Cordis loader row 的 `name` 和 client ModuleLoader ID 是 npm 模块路径，必须使用 scoped 包名；`id` 与 config namespace 仍为 `git-panel`。
 - manifest：`dsh-external/dsh-git-panel`。
-- Cordis loader row 与 config namespace：`git-panel`。
 - API：`/dsh-git-panel/api`。
 - Better Sidebar tab：`dsh-git-panel:panel`。
 - 原生主面板、预览：`dsh-git-panel`、`dsh-git-panel-preview`。
@@ -49,10 +49,12 @@
 
 ## 文档与发布
 
-变更和验证结果写入 [CHANGELOG.md](CHANGELOG.md)，格式为 `## vX.Y.Z — YYYY-MM-DD`。下方上游历史保持来源标注，不重写成自身发布记录。
+变更和验证结果写入 [CHANGELOG.md](CHANGELOG.md)，公开发布格式为 `## vX.Y.Z — YYYY-MM-DD`。首次公开发布版本为 `0.1.0`；首发前本地迭代曾使用 `0.1.0` 至 `0.1.4`，其记录单独标为未发布开发历史，不能作为公开版本递增依据。下方上游历史保持来源标注，不重写成自身发布记录。
 
 README 使用标题、语言切换、简介的顺序。尚未收录本项目时不挂市场收录徽章；保留的上游截图明确标为上游示例。
 
-本项目尚无自己的远程地址与 npm 发布配置。发布工作流仅手动触发；设置 Trusted Publisher 与发布包名后，发布行为仍需用户明确授权。
+本项目仓库为 `Misaka10091/dsh-git-panel`，npm 包为 `@misaka10091/dsh-git-panel`。已获授权配置版本标签自动发布工作流：推送 `vX.Y.Z` 标签后校验、测试、打包、发布 npm，成功后创建 GitHub Release 并附上同一 tarball；手动入口仅接受已有版本标签。npm 侧需先配置 Trusted Publisher。工作流配置授权不等于立即创建并推送标签；实际发版按用户的发版指令执行。步骤见 [docs/RELEASING.md](docs/RELEASING.md)。
+
+npm `0.1.0` 已由维护者完成首发并确认公开，当前待发布补丁为 `0.1.1`，运行时代码与公开首版一致。Trusted Publisher 已保存，但截图状态仍为 Pending validation；需要指定工作流实际发布一个新版本才能验证。不能把本机手动首发、跳过已有 npm 版本的重跑或本地测试宣称为 OIDC 验证。新包出现 `0.0.0-stage` 时是暂存占位，需维护者在 Staged Packages 中通过 2FA 批准；这与 registry 同步及 npm 人工审批不同。
 
 DSH 升级时检查平台是否已经导出可复用的完整 diff 组件；可用后优先复用官方组件，避免继续扩展临时 LineDiff。检查主题 alias token 和宿主注册协议是否发生变化。

@@ -4,7 +4,7 @@
 
 > 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供 Git 面板，基于 [KannaKuron/dsh-ide-git](https://github.com/KannaKuron/dsh-ide-git) 二开。默认提供类似 VS Code Source Control 的可折叠仓库列表，并保留完整的 Git 工作台。
 
-当前版本：**0.1.0**。上游基线：**dsh-ide-git 0.18.2**，提交 `b4e4b5a176de7da9060d1225d9ed027a8df8472c`。来源、许可证和同步方法见 [UPSTREAM.md](UPSTREAM.md)。
+当前版本：**0.1.1**。上游基线：**dsh-ide-git 0.18.2**，提交 `b4e4b5a176de7da9060d1225d9ed027a8df8472c`。来源、许可证和同步方法见 [UPSTREAM.md](UPSTREAM.md)。
 
 ## 当前能力
 
@@ -49,22 +49,33 @@ npm run check:ssr
 
 完整探针覆盖独立草稿、折叠保留、目标仓库与忙碌状态隔离、工作台往返、跨仓库 diff、提交失败重试、推送部分成功、丢弃撤回提示、失败写入与旧摘要交错、工作区旧响应和窄屏溢出。**此测试不等同于真实 DSH 宿主联调**；AGENTS.md 要求的安装后测试实例仍需显式 URL 和 `DSH_CHECKOUT` 的专项探针。已获授权安装到当前桌面 profile，真实仓库发现和嵌套仓库摘要成功；首次提交前仓库修复已安装并通过 58 项 API/仓库测试，但运行中的宿主仍缓存旧模块，需要重启加载。独立浏览器尚无当前 GUI 的登录会话，真实页面数据态验证仍待完成。
 
-## 本地安装
+## 安装
 
-此项目尚未发布到 npm。需要安装时，在项目目录先打包，再通过 DSH CLI 安装本地包：
+本项目 npm 包名为 `@misaka10091/dsh-git-panel`。首次 npm 发布完成后可直接安装：
+
+```sh
+dsh plugin --profile desktop add @misaka10091/dsh-git-panel
+```
+
+发布前可从项目目录打包并安装本地包：
 
 ```sh
 npm pack
-dsh plugin --profile desktop add file:./dsh-git-panel-0.1.0.tgz
+dsh plugin --profile desktop add file:./misaka10091-dsh-git-panel-0.1.1.tgz
 ```
 
-宿主代码更新后需要重启当前 DSH 实例才能生效；客户端更新需要重新加载页面。新项目初始化不会自动安装插件或重启实例。
+宿主代码更新后需要重启当前 DSH 实例才能生效；客户端更新需要重新加载页面。旧 unscoped 包迁移时应处理旧 bundle 和 profile 中的包名断言，保留需要的用户配置；详见 [发布与迁移说明](docs/RELEASING.md)。
+
+## 自动发布
+
+推送 `vX.Y.Z` 标签会触发 GitHub Actions：校验版本 → 测试 → 打包 → 发布 npm → 创建 GitHub Release 并附同一 `.tgz`。预发布标签使用 npm `next` 和 GitHub Pre-release；手动入口接受已有版本标签以恢复失败发布。npm 首发、Trusted Publisher 配置和发版步骤见 [发布说明](docs/RELEASING.md)。
 
 ## 独立插件标识
 
 | 用途 | 标识 |
 |---|---|
-| npm 包 / host / client module / locale namespace | `dsh-git-panel` |
+| npm 包 / Cordis 模块路径 / client ModuleLoader ID / 设置页 key | `@misaka10091/dsh-git-panel` |
+| host/client 插件导出名 / locale namespace | `dsh-git-panel` |
 | 插件清单 ID | `dsh-external/dsh-git-panel` |
 | Cordis loader row / config namespace | `git-panel` |
 | Git HTTP API | `/dsh-git-panel/api` |
@@ -96,4 +107,4 @@ dsh plugin --profile desktop add file:./dsh-git-panel-0.1.0.tgz
 
 ## 许可证
 
-[MIT](LICENSE)。保留上游 `Copyright (c) 2026 KannaKuron` 声明。本项目尚未获得上游插件的市场收录或 npm 发布身份；仓库地址确定后再补充自身的发布信息。
+[MIT](LICENSE)。保留上游 `Copyright (c) 2026 KannaKuron` 声明。本项目仓库为 [Misaka10091/dsh-git-panel](https://github.com/Misaka10091/dsh-git-panel)，npm 包为 `@misaka10091/dsh-git-panel`；上游的市场收录和发布权限不适用于本项目。

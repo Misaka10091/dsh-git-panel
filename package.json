@@ -1,8 +1,16 @@
 {
-  "name": "dsh-git-panel",
-  "version": "0.1.3",
+  "name": "@misaka10091/dsh-git-panel",
+  "version": "0.1.1",
   "description": "Git panel for DeepSeek Harness: branches, commit graph, changes, commits and diffs. Forked from dsh-ide-git. | DeepSeek Harness Git 面板：分支、提交图谱、变更、提交与差异查看。基于 dsh-ide-git 二开。",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Misaka10091/dsh-git-panel.git"
+  },
+  "homepage": "https://github.com/Misaka10091/dsh-git-panel#readme",
+  "bugs": {
+    "url": "https://github.com/Misaka10091/dsh-git-panel/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -41,12 +49,13 @@
     "README.md",
     "README_EN.md",
     "docs/screenshots",
+    "docs/RELEASING.md",
     "LICENSE",
     "UPSTREAM.md",
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "node --test tests/smoke.mjs tests/api.test.mjs tests/graph.test.mjs tests/repos.test.mjs",
+    "test": "node --test tests/smoke.mjs tests/api.test.mjs tests/graph.test.mjs tests/repos.test.mjs tests/release.test.mjs",
     "version": "node -e \"const fs=require('fs');const m=JSON.parse(fs.readFileSync('dsh.plugin.json','utf8'));const v=JSON.parse(fs.readFileSync('package.json','utf8')).version;m.version=v;fs.writeFileSync('dsh.plugin.json',JSON.stringify(m,null,2)+'\\n')\" && git add dsh.plugin.json",
     "probe:settings-card": "node scripts/settings-card-probe.mjs",
     "check:ssr": "node scripts/ssr-check.mjs",
