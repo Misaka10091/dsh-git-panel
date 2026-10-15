@@ -2,7 +2,7 @@
 
 项目仓库：<https://github.com/Misaka10091/dsh-git-panel>。npm 包：`@misaka10091/dsh-git-panel`。
 
-首次公开发布为 `0.1.0`，已确认 registry 的 `latest` 指向该版本。首发前用于本地开发和安装联调的编号记录单独保留，不作为公开版本递增依据。当前准备的补丁版为 `0.1.1`，用于补齐发布文档并首次验证 GitHub OIDC 发布链路。
+首次公开发布为 `0.1.0`。首发前用于本地开发和安装联调的编号记录单独保留，不作为公开版本递增依据。`0.1.1` 已通过 GitHub OIDC 发布，npm `latest` 指向该版本，并已创建 GitHub Release。
 
 ## 一次性配置 npm Trusted Publisher
 
@@ -37,7 +37,7 @@ npm view @misaka10091/dsh-git-panel@0.1.0 version --prefer-online --registry=htt
 
 `Allow npm publish` 下方的安全建议表示 npm 更推荐暂存后由维护者手动批准。本项目采用标签触发的直接发布，因此授予指定仓库和工作流直接发布权限；`npm stage publish` 权限不等于直接发布权限。
 
-保存后可能显示 **Pending validation**，并给出完成验证的截止时间。需在该期限前由这里指定的工作流真实发布一个尚未公开的版本。已公开的 `0.1.0` 重跑时会跳过相同安装包的 npm 上传，不能完成验证；在本机手动发布或运行 `npm whoami` 也不能验证 GitHub OIDC 权限。当前待发布 `0.1.1` 将通过工作流完成首次验证，随后检查 npm 的连接状态。
+保存后可能显示 **Pending validation**，并给出完成验证的截止时间。需在该期限前由这里指定的工作流真实发布一个尚未公开的版本。已公开的 `0.1.0` 重跑时会跳过相同安装包的 npm 上传，不能完成验证；在本机手动发布或运行 `npm whoami` 也不能验证 GitHub OIDC 权限。`0.1.1` 已通过[首次工作流运行](https://github.com/Misaka10091/dsh-git-panel/actions/runs/38668341322)完成发布，npm provenance 已关联指定仓库、工作流、标签和提交，GitHub Release 附件与 npm 安装包 integrity 一致。设置页的状态可刷新查看，无需再次发布一个版本来验证。
 
 后续工作流使用 GitHub OIDC，无需设置 `NPM_TOKEN`。`id-token: write` 用于 OIDC；`contents: write` 用于创建 Release 和上传附件。工作流使用 GitHub 托管的 Ubuntu runner、Node 24 和 npm 11（npm Trusted Publisher 要求 npm >=11.5.1、Node >=22.14.0）。公开 GitHub 仓库的 Trusted Publisher 发布会自动生成 npm provenance。
 
@@ -45,7 +45,7 @@ npm view @misaka10091/dsh-git-panel@0.1.0 version --prefer-online --registry=htt
 
 ## 日常发版
 
-当前 `0.1.1` 的版本和 changelog 已准备；发布前完成检查、提交并推送对应代码。后续例如 `0.1.2`，先执行 `npm version 0.1.2 --no-git-tag-version` 同步包和插件清单，再添加对应 changelog。
+当前 `0.1.1` 已发布。下一次例如发布 `0.1.2`，先执行 `npm version 0.1.2 --no-git-tag-version` 同步包和插件清单，再添加对应 changelog；发布前完成检查并提交对应代码。
 
 ```sh
 npm test
@@ -55,11 +55,11 @@ npm pack --dry-run
 
 SSR 检查运行 `npm run check:ssr`；可通过 `DSH_HOME` / `DSH_PROFILE` 指定测试 profile，显式 skip 不算通过。本地其他专项检查按项目开发约定执行。
 
-推送标签会立即触发 npm 发布和 GitHub Release。获得本次发版授权后，针对已提交的 `0.1.1` 执行：
+推送标签会立即触发 npm 发布和 GitHub Release。获得本次发版授权后，针对已提交的下一版本 `0.1.2` 执行：
 
 ```sh
-git tag -a v0.1.1 -m "Release v0.1.1"
-git push --atomic origin main v0.1.1
+git tag -a v0.1.2 -m "Release v0.1.2"
+git push --atomic origin main v0.1.2
 ```
 
 标签指向的提交必须包含发布工作流和对应 changelog。首次配置时，工作流需要随代码一起推送到 GitHub；原子推送可同时更新分支和标签。

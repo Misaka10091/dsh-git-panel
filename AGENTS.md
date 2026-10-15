@@ -55,6 +55,6 @@ README 使用标题、语言切换、简介的顺序。尚未收录本项目时�
 
 本项目仓库为 `Misaka10091/dsh-git-panel`，npm 包为 `@misaka10091/dsh-git-panel`。已获授权配置版本标签自动发布工作流：推送 `vX.Y.Z` 标签后校验、测试、打包、发布 npm，成功后创建 GitHub Release 并附上同一 tarball；手动入口仅接受已有版本标签。npm 侧需先配置 Trusted Publisher。工作流配置授权不等于立即创建并推送标签；实际发版按用户的发版指令执行。步骤见 [docs/RELEASING.md](docs/RELEASING.md)。
 
-npm `0.1.0` 已由维护者完成首发并确认公开，当前待发布补丁为 `0.1.1`，运行时代码与公开首版一致。Trusted Publisher 已保存，但截图状态仍为 Pending validation；需要指定工作流实际发布一个新版本才能验证。不能把本机手动首发、跳过已有 npm 版本的重跑或本地测试宣称为 OIDC 验证。新包出现 `0.0.0-stage` 时是暂存占位，需维护者在 Staged Packages 中通过 2FA 批准；这与 registry 同步及 npm 人工审批不同。
+npm `0.1.0` 已由维护者完成首发；`0.1.1` 已经通过标签工作流公开发布，运行时代码与公开首版一致。首次真实 GitHub Actions/OIDC 发布成功，npm `latest` 指向 `0.1.1`，provenance 指向本仓库的 `npm-publish.yml`、`v0.1.1` 标签及提交 `933a04c`；GitHub Release 附件的 SHA-512 与 npm dist.integrity 一致。无需再为首次验证单独发布新版本。npm 设置页的最新状态未通过登录页面读取，不能把历史 Pending validation 截图当作当前失败证据。新包出现 `0.0.0-stage` 时是暂存占位，需维护者在 Staged Packages 中通过 2FA 批准；这与 registry 同步及 npm 人工审批不同。
 
 DSH 升级时检查平台是否已经导出可复用的完整 diff 组件；可用后优先复用官方组件，避免继续扩展临时 LineDiff。检查主题 alias token 和宿主注册协议是否发生变化。

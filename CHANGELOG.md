@@ -1,15 +1,16 @@
 # Changelog — dsh-git-panel
 
-## v0.1.1 — 2026-10-14
+## v0.1.1 — 2026-10-15
 
-**类型**：docs / chore（发布文档与 Trusted Publisher 验证准备）
+**类型**：docs / chore（发布文档与 Trusted Publisher 首次验证）
 
 - 补齐 npm 手动首发所需的双因素认证步骤，以及 staged publishing 的暂存、维护者批准和 `0.0.0-stage` 占位版本说明。
 - 说明 Trusted Publisher 的直接发布权限、Pending validation 状态及首次工作流验证方式；后续正式版本通过标签工作流发布，成功后创建 GitHub Release 并附同一安装包。
 - 首次公开版本仍为 `0.1.0`，已确认 npm `latest` 指向该版本；首发前本地迭代保留为未发布开发历史。
 - 本补丁的运行时代码、语言包和 bundle 配置与 npm 上的 `0.1.0` 一致；本地首发 tarball 的 SHA-512 integrity 已与 registry 核对。
 - **验证**：完整测试 128/128、源码语法、隔离 profile 的 SSR 4/4 均通过；工作流 YAML 与 8 个 Bash 步骤语法通过；`v0.1.1` 版本/清单/changelog 校验及 `npm pack --dry-run` 通过。
-- **发布状态**：本地准备阶段，尚未推送 `v0.1.1` 标签或执行该版本线上发布；GitHub Actions/OIDC 链路待实际运行验证。
+- **发布状态**：已推送 `v0.1.1` 标签，GitHub Actions 首次运行全部通过，npm 已公开该版本且 `latest` 指向 `0.1.1`；[GitHub Release](https://github.com/Misaka10091/dsh-git-panel/releases/tag/v0.1.1) 已创建。
+- **线上核验**：[工作流运行 #1](https://github.com/Misaka10091/dsh-git-panel/actions/runs/38668341322) 的 npm 发布与 Release 步骤成功。npm provenance 关联本仓库的 `npm-publish.yml`、`v0.1.1` 标签及提交 `933a04c`；Release 附件 SHA-512 与 npm dist.integrity 一致，首次真实 OIDC 发布链路已验证。
 
 ## v0.1.0 — 2026-10-14
 
