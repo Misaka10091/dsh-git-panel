@@ -4,6 +4,11 @@
 
 > A Git panel for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), derived from [KannaKuron/dsh-ide-git](https://github.com/KannaKuron/dsh-ide-git). It opens a collapsible repository list similar to VS Code Source Control, with the full Git workbench retained.
 
+[![npm version](https://img.shields.io/npm/v/%40misaka10091%2Fdsh-git-panel?logo=npm)](https://www.npmjs.com/package/@misaka10091/dsh-git-panel)
+[![Publish workflow](https://img.shields.io/github/actions/workflow/status/Misaka10091/dsh-git-panel/npm-publish.yml?label=publish&logo=github)](https://github.com/Misaka10091/dsh-git-panel/actions/workflows/npm-publish.yml)
+[![Node.js version](https://img.shields.io/node/v/%40misaka10091%2Fdsh-git-panel?logo=node.js)](https://nodejs.org/)
+[![MIT license](https://img.shields.io/npm/l/%40misaka10091%2Fdsh-git-panel)](LICENSE)
+
 Current version: **0.1.1**. Upstream baseline: **dsh-ide-git 0.18.2**, commit `b4e4b5a176de7da9060d1225d9ed027a8df8472c`. See [UPSTREAM.md](UPSTREAM.md) for attribution and update instructions.
 
 ## Current state

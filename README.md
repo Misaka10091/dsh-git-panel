@@ -4,6 +4,11 @@
 
 > 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供 Git 面板，基于 [KannaKuron/dsh-ide-git](https://github.com/KannaKuron/dsh-ide-git) 二开。默认提供类似 VS Code Source Control 的可折叠仓库列表，并保留完整的 Git 工作台。
 
+[![npm version](https://img.shields.io/npm/v/%40misaka10091%2Fdsh-git-panel?logo=npm)](https://www.npmjs.com/package/@misaka10091/dsh-git-panel)
+[![Publish workflow](https://img.shields.io/github/actions/workflow/status/Misaka10091/dsh-git-panel/npm-publish.yml?label=publish&logo=github)](https://github.com/Misaka10091/dsh-git-panel/actions/workflows/npm-publish.yml)
+[![Node.js version](https://img.shields.io/node/v/%40misaka10091%2Fdsh-git-panel?logo=node.js)](https://nodejs.org/)
+[![MIT license](https://img.shields.io/npm/l/%40misaka10091%2Fdsh-git-panel)](LICENSE)
+
 当前版本：**0.1.1**。上游基线：**dsh-ide-git 0.18.2**，提交 `b4e4b5a176de7da9060d1225d9ed027a8df8472c`。来源、许可证和同步方法见 [UPSTREAM.md](UPSTREAM.md)。
 
 ## 当前能力

@@ -1,5 +1,10 @@
 # Changelog — dsh-git-panel
 
+## 未发布
+
+- **文档**：中英文 README 简介后添加 npm 版本、发布工作流、Node.js 运行要求和 MIT 许可证徽章，分别链接到 npm、Actions、Node.js 和许可证。
+- **验证**：四个动态徽章端点均可用，当前返回 `v0.1.1`、`passing`、`>=18`、`MIT`。npm 下载量统计尚未可用，暂不展示该徽章。
+
 ## v0.1.1 — 2026-10-15
 
 **类型**：docs / chore（发布文档与 Trusted Publisher 首次验证）
